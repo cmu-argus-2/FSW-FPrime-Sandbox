@@ -1,0 +1,19 @@
+register_fprime_library(
+    AUTOCODER_INPUTS
+        "${CMAKE_CURRENT_LIST_DIR}/MAX17205.fpp"
+    SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/MAX17205.cpp"
+)
+
+if(BUILD_TESTING)
+    register_fprime_ut(
+        AUTOCODER_INPUTS
+            "${CMAKE_CURRENT_LIST_DIR}/MAX17205.fpp"
+        SOURCES
+            "${CMAKE_CURRENT_LIST_DIR}/test/ut/MAX17205TestMain.cpp"
+            "${CMAKE_CURRENT_LIST_DIR}/test/ut/MAX17205Tester.cpp"
+        DEPENDS
+            STest
+        UT_AUTO_HELPERS
+    )
+endif()
