@@ -1,0 +1,22 @@
+diff --git a/cmake/target/fprime_install.cmake b/cmake/target/fprime_install.cmake
+index d91ad38..eb69883 100644
+--- a/cmake/target/fprime_install.cmake
++++ b/cmake/target/fprime_install.cmake
+@@ -4,7 +4,9 @@
+ # Wrapper script invoked by POST_BUILD commands to install build artifacts.
+ # Defaults DESTDIR to FPRIME_INSTALL_DEST (passed via -D) when the user
+ # has not set DESTDIR in the environment. Sets CMAKE_INSTALL_PREFIX to "/"
+-# so that DESTDIR alone controls the final install location.
++# so that DESTDIR alone controls the final install location. Use `.` rather
++# than `/`: CMake's generated install script strips a trailing slash and turns
++# `/` into an empty destination with newer CMake releases.
+ #
+ # Expected -D arguments:
+ #   FPRIME_INSTALL_DEST - default install directory (from configure step)
+@@ -14,5 +16,5 @@
+ if(NOT DEFINED ENV{DESTDIR})
+     set(ENV{DESTDIR} "${FPRIME_INSTALL_DEST}")
+ endif()
+-set(CMAKE_INSTALL_PREFIX "/")
++set(CMAKE_INSTALL_PREFIX ".")
+ include("${FPRIME_BUILD_DIR}/cmake_install.cmake")

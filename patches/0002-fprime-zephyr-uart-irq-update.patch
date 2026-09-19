@@ -1,0 +1,17 @@
+diff --git a/fprime-zephyr/Drv/ZephyrUartDriver/ZephyrUartDriver.cpp b/fprime-zephyr/Drv/ZephyrUartDriver/ZephyrUartDriver.cpp
+index e6ad992..2d238b4 100644
+--- a/fprime-zephyr/Drv/ZephyrUartDriver/ZephyrUartDriver.cpp
++++ b/fprime-zephyr/Drv/ZephyrUartDriver/ZephyrUartDriver.cpp
+@@ -61,9 +61,9 @@ namespace Zephyr {
+     {
+         struct ring_buf *ring_buf = reinterpret_cast<struct ring_buf *>(user_data);
+ 
+-        if (!uart_irq_update(dev)) {
+-            return;
+-        }
++        // Zephyr 4.5 changed uart_irq_update() from int to void. The
++        // update itself is required before querying RX state on both APIs.
++        uart_irq_update(dev);
+ 
+         if (!uart_irq_rx_ready(dev)) {
+             return;

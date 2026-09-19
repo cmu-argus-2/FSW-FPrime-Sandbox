@@ -7,6 +7,10 @@ build-fprime-*
 *.template.cpp
 *.template.hpp
 
+# Zephyr workspace, fetched by `west update` from west.yml (~9GB)
+/lib/zephyr-workspace/
+/.west/
+
 # Misc
 /venv/
 /fprime-venv/
