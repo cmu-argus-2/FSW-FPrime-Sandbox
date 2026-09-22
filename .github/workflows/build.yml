@@ -1,0 +1,211 @@
+# Firmware build for the RP2350 target. This is the slow workflow: it needs the
+# submodules, the west workspace, and the Zephyr SDK. Both large inputs are
+# cached, so a warm run is dominated by the compile itself.
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Keep in sync with lib/zephyr-workspace/zephyr/SDK_VERSION. The workspace does
+  # not exist when the SDK cache key is computed, so this is pinned here and
+  # verified against the Zephyr tree once the workspace is available.
+  ZEPHYR_SDK_VERSION: '1.0.1'
+  # Only the ARM toolchain is installed; the full SDK is several GB larger.
+  ZEPHYR_SDK_TOOLCHAIN: arm-zephyr-eabi
+  # Static RAM ceiling in bytes (.data + .bss), checked after the build.
+  #
+  # The RP2350 has 520 KiB (532480 bytes) of SRAM. CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE=-1
+  # gives malloc() whatever is left after static allocation, and F Prime's
+  # topology allocates from that arena at startup -- so every byte of .bss growth
+  # comes straight out of F Prime's heap. See the RP2350 notes in README.md.
+  #
+  # At the time this was added the build used 290656 bytes, leaving ~236 KiB of
+  # arena. The ceiling below allows ~10% growth before CI complains. Raise it
+  # deliberately, not reflexively: past ~400 KiB the deployment stops booting.
+  RAM_BUDGET_BYTES: '320000'
+
+jobs:
+  build:
+    name: RP2350 firmware
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ninja-build gperf ccache dfu-util device-tree-compiler \
+            libmagic1 file xz-utils
+
+      - name: Install F Prime and west
+        run: pip install -r requirements.txt west
+
+      # --------------------------------------------------------------------
+      # Zephyr workspace
+      # --------------------------------------------------------------------
+      # west.yml pins Zephyr to an exact commit and imports module revisions
+      # from Zephyr's own manifest, so hashing west.yml is a sound cache key:
+      # the same manifest always reconstructs the same tree.
+      - name: Restore Zephyr workspace
+        id: workspace-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .west
+            lib/zephyr-workspace
+          key: zephyr-workspace-${{ runner.os }}-${{ hashFiles('west.yml') }}
+
+      # --narrow and --depth=1 fetch only the pinned revisions rather than full
+      # history. The checked-out trees are identical; a full clone of this
+      # workspace is ~9 GB, which does not fit the Actions cache.
+      - name: Fetch Zephyr workspace
+        if: steps.workspace-cache.outputs.cache-hit != 'true'
+        run: |
+          west init -l .
+          west update --narrow --fetch-opt=--depth=1
+
+      - name: Verify pinned SDK matches Zephyr
+        run: |
+          required="$(cat lib/zephyr-workspace/zephyr/SDK_VERSION)"
+          if [ "$required" != "$ZEPHYR_SDK_VERSION" ]; then
+            echo "::error::Zephyr requires SDK $required but this workflow pins $ZEPHYR_SDK_VERSION."
+            echo "Update ZEPHYR_SDK_VERSION in .github/workflows/build.yml." >&2
+            exit 1
+          fi
+          echo "Zephyr SDK $required matches the workflow pin."
+
+      - name: Install Zephyr Python requirements
+        run: pip install -r lib/zephyr-workspace/zephyr/scripts/requirements-base.txt
+
+      - name: Export Zephyr CMake package
+        run: west zephyr-export
+
+      # --------------------------------------------------------------------
+      # Zephyr SDK
+      # --------------------------------------------------------------------
+      - name: Restore Zephyr SDK
+        id: sdk-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/zephyr-sdk-${{ env.ZEPHYR_SDK_VERSION }}
+          key: zephyr-sdk-${{ runner.os }}-${{ env.ZEPHYR_SDK_VERSION }}-${{ env.ZEPHYR_SDK_TOOLCHAIN }}
+
+      - name: Install Zephyr SDK
+        if: steps.sdk-cache.outputs.cache-hit != 'true'
+        run: |
+          base="https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v${ZEPHYR_SDK_VERSION}"
+          archive="zephyr-sdk-${ZEPHYR_SDK_VERSION}_linux-x86_64_minimal.tar.xz"
+          wget -q --show-progress "${base}/${archive}"
+          tar xf "${archive}" -C "${HOME}"
+          rm "${archive}"
+          # -t installs one toolchain, -c registers the CMake package so
+          # find_package(Zephyr-sdk) resolves without ZEPHYR_SDK_INSTALL_DIR.
+          "${HOME}/zephyr-sdk-${ZEPHYR_SDK_VERSION}/setup.sh" -t "${ZEPHYR_SDK_TOOLCHAIN}" -c
+
+      # A cache restore does not re-run setup.sh, so register the CMake package
+      # every run. Idempotent when it is already registered.
+      - name: Register SDK CMake package
+        run: |
+          sdk="${HOME}/zephyr-sdk-${ZEPHYR_SDK_VERSION}"
+          echo "ZEPHYR_SDK_INSTALL_DIR=${sdk}" >> "$GITHUB_ENV"
+          echo "ZEPHYR_TOOLCHAIN_VARIANT=zephyr" >> "$GITHUB_ENV"
+          "${sdk}/setup.sh" -c || true
+
+      # --------------------------------------------------------------------
+      # Build
+      # --------------------------------------------------------------------
+      - name: Apply submodule patches
+        run: ./patches/apply.sh
+
+      # `generate` is also the FPP semantic gate: it resolves every port,
+      # instance and topology connection across the project and the framework,
+      # which fpp-syntax in the Format workflow deliberately does not do.
+      #
+      # The board comes from default_cmake_options in settings.ini, so the
+      # `zephyr` platform argument is all that is needed here.
+      - name: Generate build cache
+        run: fprime-util generate zephyr
+
+      - name: Build firmware
+        run: fprime-util build zephyr
+
+      # --------------------------------------------------------------------
+      # Size report
+      # --------------------------------------------------------------------
+      # The SDK layout moved binaries under gnu/ in 1.0.x, so locate the tool
+      # rather than hardcoding a path that changes between SDK releases.
+      - name: Report size and check RAM budget
+        run: |
+          elf=build-fprime-automatic-zephyr/zephyr/zephyr.elf
+          size_tool="$(find "${ZEPHYR_SDK_INSTALL_DIR}" -type f \
+              -name "${ZEPHYR_SDK_TOOLCHAIN}-size" | head -n 1)"
+          if [ -z "$size_tool" ]; then
+            echo "::error::could not locate ${ZEPHYR_SDK_TOOLCHAIN}-size in the SDK"
+            exit 1
+          fi
+
+          read -r text data bss _ < <("$size_tool" "$elf" | tail -n 1)
+          flash=$((text + data))
+          ram=$((data + bss))
+          sram=532480
+
+          {
+            echo "### RP2350 size report"
+            echo
+            echo '| Region | Bytes | Note |'
+            echo '| --- | ---: | --- |'
+            echo "| Flash (text+data) | $flash | |"
+            echo "| Static RAM (data+bss) | $ram | $((ram * 100 / sram))% of 520 KiB SRAM |"
+            echo "| Remaining malloc arena | $((sram - ram)) | available to F Prime |"
+            echo
+            echo "Budget: $RAM_BUDGET_BYTES bytes."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          "$size_tool" "$elf"
+
+          if [ "$ram" -gt "$RAM_BUDGET_BYTES" ]; then
+            echo "::error::static RAM $ram exceeds budget $RAM_BUDGET_BYTES (over by $((ram - RAM_BUDGET_BYTES)) bytes)"
+            echo "This shrinks the malloc arena F Prime allocates its topology from." >&2
+            echo "Reduce usage, or raise RAM_BUDGET_BYTES in .github/workflows/build.yml." >&2
+            exit 1
+          fi
+          echo "Static RAM $ram is within budget $RAM_BUDGET_BYTES."
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ github.sha }}
+          path: |
+            build-fprime-automatic-zephyr/zephyr/zephyr.uf2
+            build-fprime-automatic-zephyr/zephyr/zephyr.elf
+            build-fprime-automatic-zephyr/zephyr/zephyr.map
+          if-no-files-found: error
+          retention-days: 14
+
+      # The GDS needs this dictionary to decode telemetry. Shipping the one the
+      # firmware was built from avoids the stale-dictionary problem described in
+      # README.md, where mismatched component IDs decode to nothing.
+      - name: Upload GDS dictionary
+        uses: actions/upload-artifact@v4
+        with:
+          name: gds-dictionary-${{ github.sha }}
+          path: build-fprime-automatic-zephyr/project/Components/FirstDeployment/Top/FirstDeploymentTopologyDictionary.json
+          if-no-files-found: error
+          retention-days: 14

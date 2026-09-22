@@ -1,0 +1,83 @@
+# Native (host) unit tests. These do not need Zephyr or the ~9 GB west
+# workspace: the top-level CMakeLists.txt skips find_package(Zephyr) under
+# BUILD_TESTING, and project/Components/CMakeLists.txt builds the testable
+# components instead of the Zephyr-only deployment.
+name: Unit tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: unit-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Native unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: lib/fprime/requirements.txt
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      # requirements.txt defers to lib/fprime/requirements.txt, so the submodule
+      # checkout above has to happen first.
+      - name: Install F Prime tooling
+        run: pip install -r requirements.txt
+
+      # 0001 fixes F Prime's install destination under newer CMake. 0002 only
+      # touches the Zephyr UART driver, which this build does not compile, but
+      # the script is idempotent and applying both keeps CI identical to a
+      # developer's working tree.
+      - name: Apply submodule patches
+        run: ./patches/apply.sh
+
+      - name: Generate unit-test build cache
+        run: fprime-util generate --ut
+
+      # Each UT module is built and run separately rather than with `--all`.
+      # `--all` also builds the fprime-zephyr library's Os implementation, which
+      # includes <zephyr/kernel.h> and cannot compile on a host toolchain.
+      #
+      # F Prime's UT build enables AddressSanitizer and UndefinedBehaviorSanitizer
+      # by default, so these runs catch memory errors as well as assertion failures.
+      - name: Build and run unit tests
+        run: |
+          mapfile -t ut_dirs < <(find project -type d -path '*/test/ut' | sed 's|/test/ut$||' | sort)
+          if [ ${#ut_dirs[@]} -eq 0 ]; then
+            echo "No unit tests found under project/" >&2
+            exit 1
+          fi
+          status=0
+          for dir in "${ut_dirs[@]}"; do
+            echo "::group::$dir"
+            if ! (cd "$dir" && fprime-util check); then
+              echo "::error file=$dir::unit tests failed"
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $status
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-logs
+          path: build-fprime-automatic-native-ut/Testing/
+          if-no-files-found: ignore
+          retention-days: 7

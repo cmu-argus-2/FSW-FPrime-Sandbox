@@ -1,0 +1,98 @@
+# Style gate. Deliberately cheap: no submodules, no Zephyr workspace, no build
+# cache. It should finish in well under a minute so it can be a required check.
+name: Format
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: format-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  clang-format:
+    name: C++ formatting
+    runs-on: ubuntu-latest
+    env:
+      # project/config holds overrides of F Prime's own configuration headers,
+      # kept close to their upstream form so they can still be diffed against
+      # the framework originals. Reformatting them to this project's style would
+      # bury that comparison in whitespace noise, so they are left alone.
+      EXCLUDE: project/config
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Pinned: clang-format's output changes between major versions, so an
+      # unpinned install turns this check into a moving target.
+      - name: Install clang-format
+        run: pip install 'clang-format==20.1.8'
+
+      # Only project/ is checked. lib/ holds submodules that carry their own
+      # style, and generated autocode lands in build-*/, which is not tracked.
+      - name: Check formatting
+        run: |
+          mapfile -d '' files < <(find project -path "$EXCLUDE" -prune -o -type f \
+              \( -name '*.cpp' -o -name '*.hpp' -o -name '*.c' -o -name '*.h' \) -print0)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No C/C++ sources found under project/ (excluding $EXCLUDE/)" >&2
+            exit 1
+          fi
+          printf 'Checking %d file(s), excluding %s/\n' "${#files[@]}" "$EXCLUDE"
+          if ! clang-format --dry-run --Werror --style=file "${files[@]}"; then
+            {
+              echo
+              echo "------------------------------------------------------------------"
+              echo "Formatting check failed. Fix it locally with:"
+              echo
+              echo "    source fprime-venv/bin/activate"
+              echo "    find project -path $EXCLUDE -prune -o -type f \\"
+              echo "        \\( -name '*.cpp' -o -name '*.hpp' \\) -print0 |"
+              echo "        xargs -0 clang-format -i --style=file"
+              echo
+              echo "Style comes from .clang-format at the repository root."
+              echo "$EXCLUDE/ is excluded on purpose; see the comment in this workflow."
+              echo "------------------------------------------------------------------"
+            } >&2
+            exit 1
+          fi
+
+  fpp-syntax:
+    name: FPP syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Matches the fprime-fpp version pulled in by lib/fprime's requirements.
+      - name: Install FPP tools
+        run: pip install 'fprime-fpp==3.3.0'
+
+      # project/config is NOT excluded here. fpp-syntax only parses -- it never
+      # rewrites a file -- so there is no formatting churn to avoid, and a
+      # malformed config .fpp breaks the firmware build. Catching that in a
+      # one-minute job beats catching it after the Zephyr workspace restores.
+      #
+      # Symbol resolution (unresolved ports, bad topology connections) needs the
+      # framework's own .fpp files and is covered by the Build workflow's
+      # `fprime-util generate` step.
+      - name: Parse FPP models
+        run: |
+          mapfile -d '' files < <(find project -type f -name '*.fpp' -print0)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No .fpp files found under project/" >&2
+            exit 1
+          fi
+          printf 'Parsing %d file(s)\n' "${#files[@]}"
+          fpp-syntax "${files[@]}" > /dev/null
