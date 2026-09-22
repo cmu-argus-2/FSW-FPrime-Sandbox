@@ -147,8 +147,3 @@ patch does not apply to Zephyr 4.3, so changing this pin means revisiting the pa
 
 Module revisions are imported from Zephyr's own manifest rather than pinned separately,
 which keeps them consistent with whichever Zephyr revision is selected.
-
-## Branches
-
-- `main` — the deployment as described above.
-- `max17205` — adds a `MAX17205` fuel-gauge component (I²C), including unit tests.
