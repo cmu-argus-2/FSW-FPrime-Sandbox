@@ -36,7 +36,18 @@ jobs:
       # requirements.txt defers to lib/fprime/requirements.txt, so the submodule
       # checkout above has to happen first.
       - name: Install F Prime tooling
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          # lib/fprime/requirements.txt pins cmake==3.26.0, but Zephyr's
+          # zephyr_default.cmake requires >= 3.28.0, so a clean install of that
+          # pin cannot configure a Zephyr build. cmake is not a hard dependency
+          # of fprime-tools (`pip show fprime-tools` does not list it, and
+          # `pip check` stays clean), so overriding the pin is safe.
+          #
+          # 4.4.3 is the version this deployment is actually built and flashed
+          # with locally. Bump both together if you move it.
+          pip install 'cmake==4.4.3'
+          cmake --version
 
       # 0001 fixes F Prime's install destination under newer CMake. 0002 only
       # touches the Zephyr UART driver, which this build does not compile, but
