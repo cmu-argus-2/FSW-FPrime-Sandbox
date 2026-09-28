@@ -4,13 +4,11 @@
 # components instead of the Zephyr-only deployment.
 name: Unit tests
 
+# Called by ci.yml. `workflow_call` is the only trigger on purpose: adding
+# `push` back would run this file a second time, standalone, alongside the
+# CI run that already calls it. Triggers and concurrency live in ci.yml.
 on:
-  push:
-  pull_request:
-
-concurrency:
-  group: unit-tests-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
 
 permissions:
   contents: read
