@@ -57,9 +57,12 @@ jobs:
       - name: Build and run unit tests
         run: |
           mapfile -t ut_dirs < <(find project -type d -path '*/test/ut' | sed 's|/test/ut$||' | sort)
+          # Not every branch carries unit tests. The generate step above is
+          # still a real check on those branches -- it proves the native build
+          # configures -- so warn rather than fail when there is nothing to run.
           if [ ${#ut_dirs[@]} -eq 0 ]; then
-            echo "No unit tests found under project/" >&2
-            exit 1
+            echo "::warning::No unit tests found under project/; only the native configure was checked."
+            exit 0
           fi
           status=0
           for dir in "${ut_dirs[@]}"; do

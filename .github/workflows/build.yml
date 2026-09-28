@@ -69,16 +69,30 @@ jobs:
           path: |
             .west
             lib/zephyr-workspace
-          key: zephyr-workspace-${{ runner.os }}-${{ hashFiles('west.yml') }}
+          key: zephyr-workspace-v2-${{ runner.os }}-${{ hashFiles('west.yml') }}
 
       # --narrow and --depth=1 fetch only the pinned revisions rather than full
       # history. The checked-out trees are identical; a full clone of this
       # workspace is ~9 GB, which does not fit the Actions cache.
+      #
+      # This step is guarded on the workspace actually being present rather than
+      # on the cache-hit output. A partial or stale cache entry would otherwise
+      # skip the fetch and fail later with a confusing "No such file" error.
       - name: Fetch Zephyr workspace
-        if: steps.workspace-cache.outputs.cache-hit != 'true'
         run: |
-          west init -l .
+          if [ -f lib/zephyr-workspace/zephyr/SDK_VERSION ]; then
+            echo "Zephyr workspace restored from cache."
+            exit 0
+          fi
+          # Do NOT use `west init -l .` here. It makes the workspace topdir the
+          # PARENT of this repository, so Zephyr lands in ../lib/zephyr-workspace
+          # where neither this workflow nor the find_package(Zephyr HINTS ...)
+          # call in CMakeLists.txt can find it. Writing the config directly
+          # pins topdir to the repository, matching a working local checkout.
+          mkdir -p .west
+          printf '[manifest]\npath = .\nfile = west.yml\n' > .west/config
           west update --narrow --fetch-opt=--depth=1
+          test -f lib/zephyr-workspace/zephyr/SDK_VERSION
 
       - name: Verify pinned SDK matches Zephyr
         run: |

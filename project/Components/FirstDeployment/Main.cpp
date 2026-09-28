@@ -3,8 +3,8 @@
 // \brief Entry point for the Zephyr F' application
 // ======================================================================
 
-#include <project/Components/FirstDeployment/Top/FirstDeploymentTopology.hpp>
 #include <Os/Os.hpp>
+#include <project/Components/FirstDeployment/Top/FirstDeploymentTopology.hpp>
 
 int main() {
     Os::init();

@@ -9,9 +9,9 @@
 // #include <project/Components/FirstDeployment/Top/FirstDeploymentPacketsAc.hpp>
 
 // Necessary project-specified types
-#include <Fw/Types/MallocAllocator.hpp>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <Fw/Types/MallocAllocator.hpp>
 
 // Public functions for use in main program are namespaced with deployment module Components
 // This is also the namespace where the topology components are instantiated by FPP.
