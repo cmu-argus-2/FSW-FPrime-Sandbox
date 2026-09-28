@@ -20,6 +20,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 # One group covering every called workflow: a new push supersedes the whole
 # previous run rather than cancelling each piece separately.
