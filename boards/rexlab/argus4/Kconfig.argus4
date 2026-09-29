@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_ARGUS4
+	select SOC_RP2350B_M33 if BOARD_ARGUS4_RP2350B_M33

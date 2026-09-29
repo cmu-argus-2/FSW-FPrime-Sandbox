@@ -1,0 +1,17 @@
+identifier: argus4/rp2350b/m33
+name: Argus 4 CubeSat Mainboard (Cortex-M33)
+type: mcu
+arch: arm
+flash: 4096
+ram: 520
+toolchain:
+  - zephyr
+  - gnuarmemb
+supported:
+  - gpio
+  - i2c
+  - spi
+  - uart
+  - usbd
+  - clock
+  - hwinfo
