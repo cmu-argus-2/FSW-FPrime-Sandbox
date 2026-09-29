@@ -1,0 +1,94 @@
+# Native (host) unit tests. These do not need Zephyr or the ~9 GB west
+# workspace: the top-level CMakeLists.txt skips find_package(Zephyr) under
+# BUILD_TESTING, and project/Components/CMakeLists.txt builds the testable
+# components instead of the Zephyr-only deployment.
+name: Unit tests
+
+# Called by ci.yml. `workflow_call` is the only trigger on purpose: adding
+# `push` back would run this file a second time, standalone, alongside the
+# CI run that already calls it. Triggers and concurrency live in ci.yml.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    name: Native unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: lib/fprime/requirements.txt
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      # requirements.txt defers to lib/fprime/requirements.txt, so the submodule
+      # checkout above has to happen first.
+      - name: Install F Prime tooling
+        run: |
+          pip install -r requirements.txt
+          # lib/fprime/requirements.txt pins cmake==3.26.0, but Zephyr's
+          # zephyr_default.cmake requires >= 3.28.0, so a clean install of that
+          # pin cannot configure a Zephyr build. cmake is not a hard dependency
+          # of fprime-tools (`pip show fprime-tools` does not list it, and
+          # `pip check` stays clean), so overriding the pin is safe.
+          #
+          # 4.4.3 is the version this deployment is actually built and flashed
+          # with locally. Bump both together if you move it.
+          pip install 'cmake==4.4.3'
+          cmake --version
+
+      # 0001 fixes F Prime's install destination under newer CMake. 0002 only
+      # touches the Zephyr UART driver, which this build does not compile, but
+      # the script is idempotent and applying both keeps CI identical to a
+      # developer's working tree.
+      - name: Apply submodule patches
+        run: ./patches/apply.sh
+
+      - name: Generate unit-test build cache
+        run: fprime-util generate --ut
+
+      # Each UT module is built and run separately rather than with `--all`.
+      # `--all` also builds the fprime-zephyr library's Os implementation, which
+      # includes <zephyr/kernel.h> and cannot compile on a host toolchain.
+      #
+      # F Prime's UT build enables AddressSanitizer and UndefinedBehaviorSanitizer
+      # by default, so these runs catch memory errors as well as assertion failures.
+      - name: Build and run unit tests
+        run: |
+          mapfile -t ut_dirs < <(find project -type d -path '*/test/ut' | sed 's|/test/ut$||' | sort)
+          # Not every branch carries unit tests. The generate step above is
+          # still a real check on those branches -- it proves the native build
+          # configures -- so warn rather than fail when there is nothing to run.
+          if [ ${#ut_dirs[@]} -eq 0 ]; then
+            echo "::warning::No unit tests found under project/; only the native configure was checked."
+            exit 0
+          fi
+          status=0
+          for dir in "${ut_dirs[@]}"; do
+            echo "::group::$dir"
+            if ! (cd "$dir" && fprime-util check); then
+              echo "::error file=$dir::unit tests failed"
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit $status
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-logs
+          path: build-fprime-automatic-native-ut/Testing/
+          if-no-files-found: ignore
+          retention-days: 7
