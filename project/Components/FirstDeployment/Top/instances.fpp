@@ -82,4 +82,12 @@ module Components {
   # instance comDriver: Drv.TcpClient base id 0x10014000
   instance comDriver: Zephyr.ZephyrUartDriver base id 0x10014000
 
+  instance batteryHeaters: project.BatteryHeaters base id 0x10015000
+
+  instance heatEnGpio: Zephyr.ZephyrGpioDriver base id 0x10016000
+
+  instance heat0Gpio: Zephyr.ZephyrGpioDriver base id 0x10017000
+
+  instance heat1Gpio: Zephyr.ZephyrGpioDriver base id 0x10018000
+
 }
