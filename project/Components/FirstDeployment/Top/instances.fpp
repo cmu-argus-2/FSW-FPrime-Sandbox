@@ -55,10 +55,14 @@ module Components {
     stack size Default.STACK_SIZE \
     priority 50
 
-  # instance max17205Instance: project.MAX17205 base id 0x10006000 \
-  #   queue size Default.QUEUE_SIZE \
-  #   stack size Default.STACK_SIZE \
-  #   priority 49
+  @ MAX17205 fuel gauge. Active because every I2C transaction blocks: giving
+  @ it its own thread keeps that blocking off the command dispatcher and off
+  @ the rate groups. This is the 13th active component in the deployment, so
+  @ CONFIG_DYNAMIC_THREAD_POOL_SIZE in prj.conf must be at least 13.
+  instance max17205Instance: project.MAX17205 base id 0x10006000 \
+    queue size Default.QUEUE_SIZE \
+    stack size Default.STACK_SIZE \
+    priority 49
 
   # ----------------------------------------------------------------------
   # Queued component instances
@@ -81,5 +85,10 @@ module Components {
 
   # instance comDriver: Drv.TcpClient base id 0x10014000
   instance comDriver: Zephyr.ZephyrUartDriver base id 0x10014000
+
+  @ I2C bus driver. Passive on purpose: its handlers are meant to run on
+  @ whichever component's thread called them, and its ports are guarded, so
+  @ two components sharing the bus are serialised by its mutex.
+  instance i2cDriver: Zephyr.ZephyrI2cDriver base id 0x10015000
 
 }
