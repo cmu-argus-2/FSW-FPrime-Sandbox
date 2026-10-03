@@ -1,6 +1,0 @@
-board:
-  name: argus4
-  full_name: Argus 4 CubeSat Mainboard
-  vendor: rexlab
-  socs:
-  - name: rp2350b
