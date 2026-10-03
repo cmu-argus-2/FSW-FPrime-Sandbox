@@ -1,7 +1,7 @@
 # FSW-fprime-sandbox
 
 An [F´ (F Prime)](https://fprime.jpl.nasa.gov) flight software deployment running on
-[Zephyr RTOS](https://zephyrproject.org) on a Raspberry Pi Pico 2 (RP2350, Cortex-M33).
+[Zephyr RTOS](https://zephyrproject.org) on the Argus mainboard (RP2350B, Cortex-M33).
 
 The deployment implements the F´ "Hello World" tutorial component (`HiComponent`, with a
 `SAY_HI` command) on top of a trimmed CCSDS command/telemetry stack, and talks to the F´
@@ -9,7 +9,8 @@ Ground Data System over the board's USB serial port.
 
 ## Requirements
 
-- Raspberry Pi Pico 2 (RP2350) — board target `rpi_pico2/rp2350a/m33`
+- Argus mainboard, revision 4 — board target `argus/rp2350b/m33_0`, defined in
+  [FSW-Zephyr-Board-Lib](https://github.com/cmu-argus-2/FSW-Zephyr-Board-Lib)
 - [Zephyr SDK](https://docs.zephyrproject.org/latest/develop/toolchains/zephyr_sdk.html)
   with the `arm-zephyr-eabi` toolchain (developed against SDK 1.0.1)
 - Python 3, CMake, Ninja
@@ -54,6 +55,15 @@ pip install -r requirements.txt
 west init -l .
 west update
 ```
+
+`west update` also fetches FSW-Zephyr-Board-Lib into
+`lib/zephyr-workspace/FSW-Zephyr-Board-Lib/`. That repo provides the `argus` board, the
+Zephyr revision and the module list; see [Board and Zephyr revision](#board-and-zephyr-revision).
+
+There must be no `.west/` directory inside `lib/zephyr-workspace/`. The build runs west from
+inside the Zephyr tree, and west uses the nearest `.west/` above it, so a nested one makes
+the build ignore this repository's `west.yml`: it loads Zephyr's full module list and cannot
+find the `argus` board.
 
 ## Build
 
@@ -138,17 +148,20 @@ F´ actually uses.
 The topology also omits the `DataProducts` and `FileHandling` subtopologies (apart from
 `prmDb`, which backs the topology's parameter connections), since neither is used here.
 
-### Zephyr revision
+### Board and Zephyr revision
 
-`west.yml` pins Zephyr to commit `5a5e6c5b3cb9` (`v4.4.0-15270-g5a5e6c5b3cb`) rather than
-to a release tag. Zephyr 4.4 changed `uart_irq_update()` from returning `int` to returning
-`void`, and `patches/0002` adapts the fprime-zephyr UART driver to that signature. That
-patch does not apply to Zephyr 4.3, so changing this pin means revisiting the patch.
+The board definition is not kept in this repository. It lives in
+[FSW-Zephyr-Board-Lib](https://github.com/cmu-argus-2/FSW-Zephyr-Board-Lib), which is shared
+with the C flight software so both build against the same pins, buses and Zephyr version.
+`west.yml` imports that repo at an exact commit; to pick up board changes, move that commit
+and run `west update`. Board fixes go to FSW-Zephyr-Board-Lib, not here.
 
-Module revisions are imported from Zephyr's own manifest rather than pinned separately,
-which keeps them consistent with whichever Zephyr revision is selected.
+`settings.ini` selects the board (`BOARD=argus/rp2350b/m33_0`) and the shared
+`argus-common` snippet (`SNIPPET=argus-common`), which turns on settings both teams agreed
+on, such as I2C.
 
-## Branches
-
-- `main` — the deployment as described above.
-- `max17205` — adds a `MAX17205` fuel-gauge component (I²C), including unit tests.
+The Zephyr revision comes from the board lib's own `west.yml`, so this repository does not
+list `zephyr` itself. Zephyr 4.4 changed `uart_irq_update()` from returning `int` to
+returning `void`, and `patches/0002` adapts the fprime-zephyr UART driver to that signature.
+If the board lib moves to a Zephyr revision that changes this API again, the patch needs
+revisiting.
