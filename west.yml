@@ -1,48 +1,30 @@
-# West manifest for this F´/Zephyr deployment - RP2040/RP2350 only.
+# West manifest for this F´/Zephyr deployment.
 #
-# The module set is imported from Zephyr's own manifest rather than pinned
-# here, so the modules always match the Zephyr revision above them. The
-# name-allowlist keeps the import down to what an RP2040/RP2350 build needs,
-# which avoids fetching the full Zephyr module set.
+# The Zephyr revision and module set are not pinned here. They come from
+# FSW-Zephyr-Board-Lib, the board support shared with the C flight software,
+# so both projects always build against the same Zephyr. Its west.yml is
+# imported below; west takes the first definition of a project it sees, so
+# listing `zephyr` in this file would silently override the shared pin.
 #
-# `revision` is a an exact commit rather than a release tag on purpose: this
-# deployment is built against a Zephyr 4.4 development commit. Zephyr 4.4
-# changed uart_irq_update() from returning int to returning void, and
-# patches/0002 adapts the fprime-zephyr UART driver to that signature. On
-# Zephyr 4.3 that patch does not apply and the build breaks, so moving this
-# revision means revisiting that patch.
+# patches/0002 adapts the fprime-zephyr UART driver to Zephyr 4.4+, where
+# uart_irq_update() returns void. Moving the board lib to a Zephyr revision
+# that changes that API again means revisiting the patch.
 
 manifest:
-  defaults:
-    remote: upstream
-
   remotes:
-    - name: upstream
-      url-base: https://github.com/zephyrproject-rtos
-
-  # Import filter to exclude optional groups
-  group-filter: [-babblesim, -optional]
+    - name: argus
+      url-base: https://github.com/cmu-argus-2
 
   projects:
-    # Zephyr RTOS core - v4.4.0-15270-g5a5e6c5b3cb
-    - name: zephyr
-      repo-path: zephyr
-      revision: 5a5e6c5b3cb9ead148f4d10c6f6e44333b6c5339
-      # path-prefix below applies to this project too, placing Zephyr at
-      # lib/zephyr-workspace/zephyr.
-      path: zephyr
-      west-commands: scripts/west-commands.yml
+    - name: FSW-Zephyr-Board-Lib
+      remote: argus
+      # Exact commit until the board lib starts tagging releases.
+      revision: 63979e5705526628dc0c3d44adbcf44ad7f1150f
+      path: FSW-Zephyr-Board-Lib
       import:
-        # Import specific submanifests only (instead of all submanifests)
-        name-allowlist:
-          - cmsis         # ARM CMSIS support (required for Cortex-M)
-          - cmsis_6       # ARM CMSIS 6 support (required for RPI)
-          - hal_rpi_pico  # Raspberry Pi Pico HAL (REQUIRED for RP2040/RP2350)
-          - picolibc      # C library
-          - hal_nxp       # Required for Teensy
-          - loramac-node  # Required by the fprime-zephyr LoRa driver
-        # Keep the imported modules under lib/zephyr-workspace/ alongside Zephyr
-        # itself, rather than at the repository root.
+        # Places the board lib, Zephyr and its modules under
+        # lib/zephyr-workspace/, where CMakeLists.txt and .west/config
+        # expect them. The prefix applies to this project's own path too.
         path-prefix: lib/zephyr-workspace
 
   self:
