@@ -11,11 +11,12 @@ add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/MAX17205/")
 # component in both places instead is a CMake configure error: "is already used
 # to build a source directory".
 #
-# The deployment is the one thing that genuinely cannot be built both ways. It
-# registers itself with register_fprime_zephyr_deployment, which only exists
-# once the Zephyr library is loaded, and its topology pulls in Zephyr-only
-# drivers. Unit tests build against F Prime's native OS layer, so the
-# deployment is left out of a BUILD_TESTING configure entirely.
+# The deployment registers itself with register_fprime_zephyr_deployment, which
+# only exists when the Zephyr library is loaded, and its topology pulls in
+# Zephyr-only drivers. Unit tests build against F Prime's native OS layer, so
+# the deployment is left out of a BUILD_TESTING configure.
+#
+# Components carrying unit tests are added inside the BUILD_TESTING branch.
 if (NOT BUILD_TESTING)
     add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/FirstDeployment/")
 endif()

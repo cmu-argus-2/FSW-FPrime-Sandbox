@@ -1,0 +1,42 @@
+# Entry point for CI. The actual work lives in the three files called below,
+# each of which is a reusable workflow (`on: workflow_call`).
+#
+# Everything still reports as ONE run in the Actions tab, and because no job
+# here declares `needs:`, the three start together and a failure in one does
+# not stop the others.
+#
+#   format.yml      ~30s   clang-format + fpp-syntax
+#   unit-tests.yml  ~3m    native build, ASan/UBSan
+#   build.yml      20-40m  RP2350 firmware, Zephyr workspace + SDK (cached)
+name: CI
+run-name: "CI · branch: ${{ github.head_ref || github.ref_name }}"
+
+# Pushes only trigger CI on main; branch work is covered by its pull request.
+# Running both unfiltered would give every push to a branch with an open PR two
+# full runs -- a push run on refs/heads/<branch> and a pull_request run on
+# refs/pull/<n>/merge -- which land in different concurrency groups and so do
+# not cancel each other. That means two firmware builds per push.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# One group covering every called workflow: a new push supersedes the whole
+# previous run rather than cancelling each piece separately.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    uses: ./.github/workflows/format.yml
+
+  unit-tests:
+    uses: ./.github/workflows/unit-tests.yml
+
+  build:
+    uses: ./.github/workflows/build.yml
