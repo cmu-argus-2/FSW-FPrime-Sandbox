@@ -347,15 +347,13 @@ void MAX17205::READ_ALL_cmdHandler(FwOpcodeType opCode, U32 cmdSeq) {
     // Report success only if the whole snapshot came back. Every channel that
     // did read successfully has already been published either way, so a
     // partial failure still gets the operator as much data as the bus allowed.
-    this->cmdResponse_out(opCode, cmdSeq,
-                          (failures == 0) ? Fw::CmdResponse::OK : Fw::CmdResponse::EXECUTION_ERROR);
+    this->cmdResponse_out(opCode, cmdSeq, (failures == 0) ? Fw::CmdResponse::OK : Fw::CmdResponse::EXECUTION_ERROR);
 }
 
 void MAX17205::RESET_cmdHandler(FwOpcodeType opCode, U32 cmdSeq) {
     const Drv::I2cStatus status = this->resetDevice();
     this->cmdResponse_out(opCode, cmdSeq,
-                          (status == Drv::I2cStatus::I2C_OK) ? Fw::CmdResponse::OK
-                                                             : Fw::CmdResponse::EXECUTION_ERROR);
+                          (status == Drv::I2cStatus::I2C_OK) ? Fw::CmdResponse::OK : Fw::CmdResponse::EXECUTION_ERROR);
 }
 
 }  // namespace project

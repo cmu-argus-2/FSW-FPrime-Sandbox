@@ -87,7 +87,7 @@ class MAX17205 final : public MAX17205ComponentBase {
     // Register map
     // ----------------------------------------------------------------------
     enum Register : U8 {
-        STATUS_ADDR = 0x00,    // Alert and chip status flags (bitfield)
+        STATUS_ADDR = 0x00,  // Alert and chip status flags (bitfield)
 
         // Fuel-gauge register bank, I2C address 0x36
         VCELL_ADDR = 0x09,     // Contains alert status and chip status
@@ -142,7 +142,7 @@ class MAX17205 final : public MAX17205ComponentBase {
     // bus, and *that* is the point at which a guarded cache starts earning
     // its keep.
     // ----------------------------------------------------------------------
-    
+
     Drv::I2cStatus readStatus();
     Drv::I2cStatus readStateOfCharge();
     Drv::I2cStatus readRemainingCapacity();

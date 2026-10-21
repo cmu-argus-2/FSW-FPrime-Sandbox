@@ -160,9 +160,9 @@ TEST(MAX17205, ThrottlesAndRearmsErrorEvent) {
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
-    // ! Seed testing is used so you can rerun the same randomized test! 
+    // ! Seed testing is used so you can rerun the same randomized test!
     // since this randomization is not used in our tests, seed generation is commented out
-    
+
     // STest::Random::seed();
     return RUN_ALL_TESTS();
 }
