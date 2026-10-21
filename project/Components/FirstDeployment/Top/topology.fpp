@@ -34,7 +34,8 @@ module Components {
     instance comDriver
     instance cmdSeq
     instance hiCmpntInstance
-    # instance max17205Instance
+    instance max17205Instance
+    instance i2cDriver
 
   # ----------------------------------------------------------------------
   # Pattern graph specifiers
@@ -113,7 +114,28 @@ module Components {
     }
 
     connections FirstDeployment {
+      # MAX17205 fuel gauge -> I2C bus driver.
+      #
+      # These two are output ports on the component: they MUST be connected,
+      # because invoking an unconnected output port asserts at runtime. The
+      # driver's input ports are guarded, so the transaction is serialised
+      # against anything else that later shares this bus.
+      max17205Instance.busWriteRead -> i2cDriver.writeRead
+      max17205Instance.busWrite -> i2cDriver.write
 
+      # NOTE: max17205Instance.run is deliberately left unconnected for first
+      # hardware bring-up, so the gauge is only read when READ_ALL is
+      # commanded. An input port with nothing attached is simply never called,
+      # which is legal and is what makes a command-only test possible.
+      #
+      # It is left out on purpose rather than by omission: the I2cError event
+      # is throttled at 5, and the throttle only clears after a fully clean
+      # sample. If a rate group were hammering a miswired bus from boot, it
+      # would burn the throttle before an operator could send READ_ALL, and
+      # that command's errors would then be silent. Connect this line once the
+      # bus is confirmed working:
+      #
+      #   rateGroup_0_25Hz.RateGroupMemberOut[2] -> max17205Instance.run
     }
 
   }
