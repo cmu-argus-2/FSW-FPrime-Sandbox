@@ -143,7 +143,7 @@ Drv::I2cStatus MAX17205::writeRegister(U32 address, Register reg, U8 valueLow, U
 // emitted the I2cError event naming the register.
 // ----------------------------------------------------------------------
 
-Drv::I2cStatus MAX17205::readStatus() {
+Drv::I2cStatus MAX17205::readStatus(project::BatteryState&) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, STATUS_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
@@ -152,135 +152,149 @@ Drv::I2cStatus MAX17205::readStatus() {
     return status;
 }
 
-Drv::I2cStatus MAX17205::readStateOfCharge() {
+Drv::I2cStatus MAX17205::readStateOfCharge(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, REPSOC_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_StateOfCharge(decodeStateOfCharge(raw));
+        state.set_stateOfCharge(decodeStateOfCharge(raw));
+        this->tlmWrite_StateOfCharge(state.get_stateOfCharge());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readRemainingCapacity() {
+Drv::I2cStatus MAX17205::readRemainingCapacity(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, REPCAP_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_RemainingCapacity(decodeCapacity(raw));
+        state.set_remainingCapacity(decodeCapacity(raw));
+        this->tlmWrite_RemainingCapacity(state.get_remainingCapacity());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readFullCapacity() {
+Drv::I2cStatus MAX17205::readFullCapacity(project::BatteryState& state) {
     // FullCapRep uses the same 0.5 mAh per count scaling as RepCap.
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, CAPACITY_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_FullCapacity(decodeCapacity(raw));
+        state.set_fullCapacity(decodeCapacity(raw));
+        this->tlmWrite_FullCapacity(state.get_fullCapacity());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readCurrent() {
+Drv::I2cStatus MAX17205::readCurrent(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, CURRENT_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
         // Signed: negative while the pack is discharging.
-        this->tlmWrite_Current(decodeCurrent(toSigned(raw)));
+        state.set_current(decodeCurrent(toSigned(raw)));
+        this->tlmWrite_Current(state.get_current());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readVoltage() {
+Drv::I2cStatus MAX17205::readVoltage(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, VBAT_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_Voltage(decodeVoltage(raw));
+        state.set_voltage(decodeVoltage(raw));
+        this->tlmWrite_Voltage(state.get_voltage());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readMidVoltage() {
+Drv::I2cStatus MAX17205::readMidVoltage(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, VCELL_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_MidVoltage(decodeMidVoltage(raw));
+        state.set_midVoltage(decodeMidVoltage(raw));
+        this->tlmWrite_MidVoltage(state.get_midVoltage());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readCycles() {
+Drv::I2cStatus MAX17205::readCycles(project::BatteryState& state) {
     // Reported raw; the ground applies whatever cycle scaling it wants.
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, CYCLES_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_Cycles(raw);
+        state.set_cycles(raw);
+        this->tlmWrite_Cycles(state.get_cycles());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readTimeToEmpty() {
+Drv::I2cStatus MAX17205::readTimeToEmpty(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, TTE_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_TimeToEmpty(decodeTime(raw));
+        state.set_timeToEmpty(decodeTime(raw));
+        this->tlmWrite_TimeToEmpty(state.get_timeToEmpty());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readTimeToFull() {
+Drv::I2cStatus MAX17205::readTimeToFull(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, TTF_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_TimeToFull(decodeTime(raw));
+        state.set_timeToFull(decodeTime(raw));
+        this->tlmWrite_TimeToFull(state.get_timeToFull());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readTimeSincePowerUp() {
+Drv::I2cStatus MAX17205::readTimeSincePowerUp(project::BatteryState& state) {
     // Reported raw; see the channel comment in the .fpp about the units.
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, TIMERH_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_TimeSincePowerUp(raw);
+        state.set_timeSincePowerUp(raw);
+        this->tlmWrite_TimeSincePowerUp(state.get_timeSincePowerUp());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readTemperature() {
+Drv::I2cStatus MAX17205::readTemperature(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_deviceAddress, TEMP_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
         // Signed, like Current: a pack below freezing must read negative.
-        this->tlmWrite_Temperature(decodeTemperature(toSigned(raw)));
+        state.set_temperature(decodeTemperature(toSigned(raw)));
+        this->tlmWrite_Temperature(state.get_temperature());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readTemperatureAin1() {
+Drv::I2cStatus MAX17205::readTemperatureAin1(project::BatteryState& state) {
     // Note the shadow address: the thermistor registers live behind 0x0B,
     // not the fuel-gauge address.
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_shadowAddress, TEMP1_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_TemperatureAin1(decodeThermistorTemperature(raw));
+        state.set_temperatureAin1(decodeThermistorTemperature(raw));
+        this->tlmWrite_TemperatureAin1(state.get_temperatureAin1());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readTemperatureAin2() {
+Drv::I2cStatus MAX17205::readTemperatureAin2(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_shadowAddress, TEMP2_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_TemperatureAin2(decodeThermistorTemperature(raw));
+        state.set_temperatureAin2(decodeThermistorTemperature(raw));
+        this->tlmWrite_TemperatureAin2(state.get_temperatureAin2());
     }
     return status;
 }
 
-Drv::I2cStatus MAX17205::readTemperatureDie() {
+Drv::I2cStatus MAX17205::readTemperatureDie(project::BatteryState& state) {
     U16 raw = 0;
     const Drv::I2cStatus status = this->readRegister(this->m_shadowAddress, INTTEMP_ADDR, raw);
     if (status == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_TemperatureDie(decodeThermistorTemperature(raw));
+        state.set_temperatureDie(decodeThermistorTemperature(raw));
+        this->tlmWrite_TemperatureDie(state.get_temperatureDie());
     }
     return status;
 }
@@ -294,32 +308,32 @@ Drv::I2cStatus MAX17205::resetDevice() {
 // Sampling
 // ----------------------------------------------------------------------
 
-U32 MAX17205::sampleAll() {
+U32 MAX17205::sampleAll(project::BatteryState& state) {
     // The reads are deliberately independent. Each is its own transaction and
     // a failure in one says nothing about the others, so one flaky register
     // must not cost an entire sample of battery telemetry. Count the failures
     // and let the caller decide what to do about them.
     U32 failures = 0;
 
-    failures += (this->readStatus() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readStatus(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
 
     // Fuel-gauge register bank (0x36).
-    failures += (this->readVoltage() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readCurrent() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readMidVoltage() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readStateOfCharge() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readRemainingCapacity() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readFullCapacity() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readCycles() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readTimeToEmpty() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readTimeToFull() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readTimeSincePowerUp() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readTemperature() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readVoltage(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readCurrent(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readMidVoltage(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readStateOfCharge(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readRemainingCapacity(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readFullCapacity(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readCycles(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readTimeToEmpty(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readTimeToFull(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readTimeSincePowerUp(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readTemperature(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
 
     // Shadow RAM (0x0B).
-    failures += (this->readTemperatureAin1() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readTemperatureAin2() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
-    failures += (this->readTemperatureDie() == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readTemperatureAin1(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readTemperatureAin2(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
+    failures += (this->readTemperatureDie(state) == Drv::I2cStatus::I2C_OK) ? 0U : 1U;
 
     if (failures == 0) {
         // A clean sweep means the bus is healthy again, so re-arm the error
@@ -335,25 +349,24 @@ U32 MAX17205::sampleAll() {
 // Handlers
 // ----------------------------------------------------------------------
 
+U32 MAX17205::read_handler(FwIndexType portNum, project::BatteryState& state) {
+    // Runs on the calling task's thread: the ~15 blocking I2C transactions
+    // below are spent out of that task's time budget, which is the point of
+    // this component being passive. The port is guarded, so a second caller
+    // waits rather than interleaving register reads.
+    return this->sampleAll(state);
+}
+
+Drv::I2cStatus MAX17205::reset_handler(FwIndexType portNum) {
+    return this->resetDevice();
+}
+
 void MAX17205::run_handler(FwIndexType portNum, U32 context) {
-    // Periodic sample from the rate group. Failures are already reported by
-    // the individual reads through the throttled I2cError event, so there is
-    // nothing extra to do with the count here.
-    (void)this->sampleAll();
-}
-
-void MAX17205::READ_ALL_cmdHandler(FwOpcodeType opCode, U32 cmdSeq) {
-    const U32 failures = this->sampleAll();
-    // Report success only if the whole snapshot came back. Every channel that
-    // did read successfully has already been published either way, so a
-    // partial failure still gets the operator as much data as the bus allowed.
-    this->cmdResponse_out(opCode, cmdSeq, (failures == 0) ? Fw::CmdResponse::OK : Fw::CmdResponse::EXECUTION_ERROR);
-}
-
-void MAX17205::RESET_cmdHandler(FwOpcodeType opCode, U32 cmdSeq) {
-    const Drv::I2cStatus status = this->resetDevice();
-    this->cmdResponse_out(opCode, cmdSeq,
-                          (status == Drv::I2cStatus::I2C_OK) ? Fw::CmdResponse::OK : Fw::CmdResponse::EXECUTION_ERROR);
+    // Rate-group entry point for running without a task driving the gauge.
+    // Does the same work as read_handler and keeps only the telemetry;
+    // failures are already reported through the throttled I2cError event.
+    project::BatteryState state;
+    (void)this->sampleAll(state);
 }
 
 }  // namespace project

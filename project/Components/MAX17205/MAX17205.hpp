@@ -143,36 +143,42 @@ class MAX17205 final : public MAX17205ComponentBase {
     // its keep.
     // ----------------------------------------------------------------------
 
-    Drv::I2cStatus readStatus();
-    Drv::I2cStatus readStateOfCharge();
-    Drv::I2cStatus readRemainingCapacity();
-    Drv::I2cStatus readFullCapacity();
-    Drv::I2cStatus readCurrent();
-    Drv::I2cStatus readVoltage();
-    Drv::I2cStatus readMidVoltage();
-    Drv::I2cStatus readCycles();
-    Drv::I2cStatus readTimeToEmpty();
-    Drv::I2cStatus readTimeToFull();
-    Drv::I2cStatus readTimeSincePowerUp();
-    Drv::I2cStatus readTemperature();
-    Drv::I2cStatus readTemperatureAin1();
-    Drv::I2cStatus readTemperatureAin2();
-    Drv::I2cStatus readTemperatureDie();
+    Drv::I2cStatus readStatus(project::BatteryState& state);
+    Drv::I2cStatus readStateOfCharge(project::BatteryState& state);
+    Drv::I2cStatus readRemainingCapacity(project::BatteryState& state);
+    Drv::I2cStatus readFullCapacity(project::BatteryState& state);
+    Drv::I2cStatus readCurrent(project::BatteryState& state);
+    Drv::I2cStatus readVoltage(project::BatteryState& state);
+    Drv::I2cStatus readMidVoltage(project::BatteryState& state);
+    Drv::I2cStatus readCycles(project::BatteryState& state);
+    Drv::I2cStatus readTimeToEmpty(project::BatteryState& state);
+    Drv::I2cStatus readTimeToFull(project::BatteryState& state);
+    Drv::I2cStatus readTimeSincePowerUp(project::BatteryState& state);
+    Drv::I2cStatus readTemperature(project::BatteryState& state);
+    Drv::I2cStatus readTemperatureAin1(project::BatteryState& state);
+    Drv::I2cStatus readTemperatureAin2(project::BatteryState& state);
+    Drv::I2cStatus readTemperatureDie(project::BatteryState& state);
 
     //! Request a power-on reset of the gauge via CONFIG2.
     Drv::I2cStatus resetDevice();
 
-    //! Run every read above, publishing whatever succeeds.
+    //! Run every read above, publishing whatever succeeds and filling in
+    //! `state` as it goes. Fields whose read failed are left untouched.
     //! \return the number of reads that failed (0 means a clean sample)
-    U32 sampleAll();
+    U32 sampleAll(project::BatteryState& state);
 
     // ----------------------------------------------------------------------
     // Handlers
     // ----------------------------------------------------------------------
 
+    //! Sample the gauge for a calling task. Runs on the caller's thread.
+    U32 read_handler(FwIndexType portNum, project::BatteryState& state) override;
+
+    //! Request a power-on reset for a calling task.
+    Drv::I2cStatus reset_handler(FwIndexType portNum) override;
+
+    //! Rate-group entry point: sample and publish, discarding the values.
     void run_handler(FwIndexType portNum, U32 context) override;
-    void READ_ALL_cmdHandler(FwOpcodeType opCode, U32 cmdSeq) override;
-    void RESET_cmdHandler(FwOpcodeType opCode, U32 cmdSeq) override;
 
     // ----------------------------------------------------------------------
     // State

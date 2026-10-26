@@ -68,7 +68,19 @@ MAX17205Tester::MAX17205Tester() : MAX17205GTestBase("MAX17205Tester", MAX_HISTO
     this->connectPorts();
 }
 
-MAX17205Tester::~MAX17205Tester() {}
+MAX17205Tester::~MAX17205Tester() {
+    // Release what initComponents() allocated. For an active or queued
+    // component that is the message queue, which init() mallocs and only
+    // deinit() frees. Every TEST builds a fresh tester, so skipping this leaks
+    // one queue per test case.
+    //
+    // It costs nothing for a passive component, which has no queue, so this
+    // call stays correct if the component's kind ever changes.
+    //
+    // Worth knowing: macOS does not run LeakSanitizer under -fsanitize=address
+    // by default, so a leak here passes locally and only fails in CI on Linux.
+    this->component.deinit();
+}
 
 // ----------------------------------------------------------------------
 // Fake bus
@@ -283,8 +295,9 @@ void MAX17205Tester::testReadAll() {
     this->failNothing();
     this->resetRecording();
 
-    this->sendCmd_READ_ALL(0, 42);
-    this->component.doDispatch();
+    project::BatteryState state;
+    const U32 failures = this->invoke_to_read(0, state);
+    ASSERT_EQ(failures, 0U);
 
     // Every register is read once, and the three shadow-RAM temperatures go
     // to 0x0B while everything else goes to 0x36. Getting an address wrong is
@@ -309,11 +322,15 @@ void MAX17205Tester::testReadAll() {
 
     this->assertCleanSampleTelemetry();
 
+    // The caller's struct carries the same values the channels did.
+    EXPECT_FLOAT_EQ(state.get_voltage(), 8000.0F);
+    EXPECT_FLOAT_EQ(state.get_current(), -50.0F);
+    EXPECT_FLOAT_EQ(state.get_stateOfCharge(), 78.0F);
+    EXPECT_EQ(state.get_cycles(), 123);
+    EXPECT_EQ(state.get_temperatureDie(), 3190);
+
     // No bus errors, so no events at all.
     ASSERT_EVENTS_SIZE(0);
-
-    ASSERT_CMD_RESPONSE_SIZE(1);
-    ASSERT_CMD_RESPONSE(0, MAX17205::OPCODE_READ_ALL, 42, Fw::CmdResponse::OK);
 }
 
 void MAX17205Tester::testReadAllPartialFailure() {
@@ -321,20 +338,22 @@ void MAX17205Tester::testReadAllPartialFailure() {
     // for the channel that is about to break.
     this->failNothing();
     this->resetRecording();
-    this->sendCmd_READ_ALL(0, 1);
-    this->component.doDispatch();
-    ASSERT_CMD_RESPONSE(0, MAX17205::OPCODE_READ_ALL, 1, Fw::CmdResponse::OK);
+    project::BatteryState warmup;
+    ASSERT_EQ(this->invoke_to_read(0, warmup), 0U);
 
     // Now break exactly one register.
     this->failOnly(MAIN_ADDR, REG_VBAT, Drv::I2cStatus::I2C_READ_ERR);
     this->resetRecording();
 
-    this->sendCmd_READ_ALL(0, 43);
-    this->component.doDispatch();
+    project::BatteryState state;
+    const U32 failures = this->invoke_to_read(0, state);
 
     // The failure is on the very first read. All 14 are still attempted: one
     // bad register must not cost the whole battery snapshot.
     ASSERT_EQ(this->m_transactionCount, READS_PER_SAMPLE);
+
+    // Exactly one read failed, and the caller is told so.
+    ASSERT_EQ(failures, 1U);
 
     // The broken channel publishes nothing at all this sample. That is what
     // keeps the last good value on the ground intact: a failed read must never
@@ -354,9 +373,16 @@ void MAX17205Tester::testReadAllPartialFailure() {
     ASSERT_EVENTS_I2cError_SIZE(1);
     ASSERT_EVENTS_I2cError(0, REG_VBAT, Drv::I2cStatus::I2C_READ_ERR);
 
-    // The command still fails, so an operator knows the snapshot is partial.
-    ASSERT_CMD_RESPONSE_SIZE(1);
-    ASSERT_CMD_RESPONSE(0, MAX17205::OPCODE_READ_ALL, 43, Fw::CmdResponse::EXECUTION_ERROR);
+    // Same contract for the caller's struct: the field whose read failed is
+    // left exactly as it was passed in, so a task reusing one struct keeps its
+    // previous reading rather than having it zeroed. Done last, and with the
+    // history cleared, because it costs another sample.
+    project::BatteryState reused;
+    reused.set_voltage(1234.0F);
+    this->resetRecording();
+    ASSERT_EQ(this->invoke_to_read(0, reused), 1U);
+    EXPECT_FLOAT_EQ(reused.get_voltage(), 1234.0F);  // untouched by the failed read
+    EXPECT_FLOAT_EQ(reused.get_current(), -50.0F);   // the successful reads still land
 }
 
 void MAX17205Tester::testScheduledSample() {
@@ -365,7 +391,6 @@ void MAX17205Tester::testScheduledSample() {
 
     // Rate group tick. The port is async, so the work happens on dispatch.
     this->invoke_to_run(0, 0);
-    this->component.doDispatch();
 
     ASSERT_EQ(this->m_transactionCount, READS_PER_SAMPLE);
     this->assertCleanSampleTelemetry();
@@ -373,15 +398,14 @@ void MAX17205Tester::testScheduledSample() {
 
     // Scheduled sampling is not a command, so nothing should be responding to
     // the command dispatcher.
-    ASSERT_CMD_RESPONSE_SIZE(0);
 }
 
 void MAX17205Tester::testReset() {
     this->failNothing();
     this->resetRecording();
 
-    this->sendCmd_RESET(0, 44);
-    this->component.doDispatch();
+    const Drv::I2cStatus resetStatus = this->invoke_to_reset(0);
+    ASSERT_EQ(resetStatus, Drv::I2cStatus::I2C_OK);
 
     // Reset is a write-only transaction, so it must not touch the write-read
     // port at all.
@@ -397,22 +421,18 @@ void MAX17205Tester::testReset() {
     EXPECT_EQ(this->m_lastWrite[2], 0x00);
 
     ASSERT_EVENTS_SIZE(0);
-    ASSERT_CMD_RESPONSE_SIZE(1);
-    ASSERT_CMD_RESPONSE(0, MAX17205::OPCODE_RESET, 44, Fw::CmdResponse::OK);
 }
 
 void MAX17205Tester::testResetFailure() {
     this->failEverything(Drv::I2cStatus::I2C_WRITE_ERR);
     this->resetRecording();
 
-    this->sendCmd_RESET(0, 45);
-    this->component.doDispatch();
+    const Drv::I2cStatus resetStatus = this->invoke_to_reset(0);
+    ASSERT_EQ(resetStatus, Drv::I2cStatus::I2C_WRITE_ERR);
 
     ASSERT_EQ(this->m_writeCount, 1U);
     ASSERT_EVENTS_I2cError_SIZE(1);
     ASSERT_EVENTS_I2cError(0, REG_CONFIG2, Drv::I2cStatus::I2C_WRITE_ERR);
-    ASSERT_CMD_RESPONSE_SIZE(1);
-    ASSERT_CMD_RESPONSE(0, MAX17205::OPCODE_RESET, 45, Fw::CmdResponse::EXECUTION_ERROR);
 }
 
 void MAX17205Tester::testConfigureAddresses() {
@@ -425,8 +445,8 @@ void MAX17205Tester::testConfigureAddresses() {
     this->failNothing();
     this->resetRecording();
 
-    this->sendCmd_READ_ALL(0, 46);
-    this->component.doDispatch();
+    project::BatteryState state;
+    (void)this->invoke_to_read(0, state);
 
     ASSERT_EQ(this->m_transactionCount, READS_PER_SAMPLE);
     // First read goes to the reconfigured main bank...
@@ -448,7 +468,6 @@ void MAX17205Tester::testErrorThrottle() {
     this->failEverything(Drv::I2cStatus::I2C_ADDRESS_ERR);
     this->resetRecording();
     this->invoke_to_run(0, 0);
-    this->component.doDispatch();
 
     ASSERT_EQ(this->m_transactionCount, READS_PER_SAMPLE);
     ASSERT_EVENTS_I2cError_SIZE(THROTTLE_LIMIT);
@@ -456,14 +475,12 @@ void MAX17205Tester::testErrorThrottle() {
     // Still down: the throttle is latched, so no further events.
     this->resetRecording();
     this->invoke_to_run(0, 0);
-    this->component.doDispatch();
     ASSERT_EVENTS_I2cError_SIZE(0);
 
     // Bus recovers. A sample with zero failures clears the throttle.
     this->failNothing();
     this->resetRecording();
     this->invoke_to_run(0, 0);
-    this->component.doDispatch();
     ASSERT_EVENTS_SIZE(0);
     this->assertCleanSampleTelemetry();
 
@@ -471,7 +488,6 @@ void MAX17205Tester::testErrorThrottle() {
     this->failEverything(Drv::I2cStatus::I2C_ADDRESS_ERR);
     this->resetRecording();
     this->invoke_to_run(0, 0);
-    this->component.doDispatch();
     ASSERT_EVENTS_I2cError_SIZE(THROTTLE_LIMIT);
 }
 
@@ -486,7 +502,6 @@ void MAX17205Tester::testSubZeroTemperature() {
     this->resetRecording();
 
     this->invoke_to_run(0, 0);
-    this->component.doDispatch();
 
     ASSERT_TLM_Temperature_SIZE(1);
     ASSERT_TLM_Temperature(0, -100.0F);
@@ -495,7 +510,6 @@ void MAX17205Tester::testSubZeroTemperature() {
     this->overrideRegister(MAIN_ADDR, REG_TEMP, 0xEC00);
     this->resetRecording();
     this->invoke_to_run(0, 0);
-    this->component.doDispatch();
 
     ASSERT_TLM_Temperature_SIZE(1);
     ASSERT_TLM_Temperature(0, -2000.0F);

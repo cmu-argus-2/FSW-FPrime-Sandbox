@@ -1,5 +1,41 @@
 module project {
 
+    @ One complete sample of the MAX17205, decoded into physical units.
+    @
+    @ Handed back by the `read` port so a calling task gets the values and the
+    @ telemetry from a single bus transaction. The driver keeps no copy of
+    @ this: a caller that wants the last reading without touching the bus
+    @ should hold on to the struct it was given.
+    struct BatteryState {
+        voltage: F32             @< Pack voltage in mV
+        current: F32             @< Current in mA, negative while discharging
+        midVoltage: F32          @< Cell/midpoint voltage in mV
+        stateOfCharge: F32       @< Reported state of charge in percent
+        remainingCapacity: F32   @< Reported remaining capacity in mAh
+        fullCapacity: F32        @< Full capacity estimate in mAh
+        cycles: U16              @< Charge/discharge cycle count, raw counts
+        timeToEmpty: F32         @< Time to empty in seconds
+        timeToFull: F32          @< Time to full in seconds
+        timeSincePowerUp: U16    @< TimerH, raw counts (3.2 h per count)
+        temperature: F32         @< Pack temperature in centi-Celsius, signed
+        temperatureAin1: I32     @< AIN1 thermistor in centi-Celsius
+        temperatureAin2: I32     @< AIN2 thermistor in centi-Celsius
+        temperatureDie: I32      @< Internal die temperature in centi-Celsius
+    }
+
+    @ Sample the fuel gauge.
+    @
+    @ Fields of `state` whose register read failed are left at whatever the
+    @ caller passed in, so a caller reusing one struct keeps its previous value
+    @ for those fields rather than seeing a zero. The return value says how
+    @ many reads failed, and the I2cError event names which registers.
+    port FuelGaugeRead(
+        ref sample: BatteryState @< Filled in with this sample
+    ) -> U32
+
+    @ Request a power-on reset of the fuel gauge.
+    port FuelGaugeReset -> Drv.I2cStatus
+
     @ MAX17205 fuel-gauge device manager.
     @
     @ The MAX17205 is a multi-cell battery fuel gauge. It tracks pack voltage,
@@ -16,7 +52,7 @@ module project {
     @ The component is active because every I2C transaction blocks. Giving it
     @ its own thread keeps that blocking off the rate group and off the command
     @ dispatcher.
-    active component MAX17205 {
+    passive component MAX17205 {
 
         # ----------------------------------------------------------------------
         # I2C bus ports
@@ -32,28 +68,50 @@ module project {
         output port busWrite: Drv.I2c
 
         # ----------------------------------------------------------------------
-        # Scheduled sampling
+        # Entry points
+        #
+        # This component is passive: it owns no thread, so every handler below
+        # runs on the thread of whoever invokes it, and the blocking I2C
+        # traffic is spent out of that caller's time budget. The EPS task is
+        # the intended caller.
+        #
+        # Passive is the right shape here because every peripheral shares one
+        # I2C bus. Only one transaction can be in flight at a time no matter
+        # how many threads exist, so giving each driver its own thread would
+        # buy no concurrency while costing 8 KB of stack apiece. The threads
+        # belong one level up, at the task layer, where work really can
+        # overlap. Mutual exclusion on the bus is already handled: the I2C
+        # driver's ports are guarded.
+        #
+        # The ports here are guarded rather than sync so that two callers --
+        # the EPS task and a rate group, say -- cannot interleave register
+        # reads on the same device.
         # ----------------------------------------------------------------------
 
-        @ Rate group input. Each call samples every register and publishes
-        @ telemetry, the same work READ_ALL does on demand. It is async so the
-        @ blocking I2C traffic happens on this component's own thread rather
-        @ than stalling the rate group, and `drop` means a slow or wedged bus
-        @ backs up harmlessly instead of overflowing the queue and asserting.
-        async input port run: Svc.Sched drop
+        @ Read every register, publish telemetry, and hand the decoded values
+        @ back to the caller. Returns the number of register reads that failed,
+        @ so 0 means a complete snapshot. Reads are independent: one bad
+        @ register does not abort the rest.
+        guarded input port read: project.FuelGaugeRead
+
+        @ Request a power-on reset of the gauge.
+        @ Destructive: this discards the learned capacity model.
+        guarded input port reset: project.FuelGaugeReset
+
+        @ Rate-group entry point for sampling without a task driving it:
+        @ performs the same work as `read` and discards the values, leaving
+        @ only the telemetry. Useful for bring-up and standalone operation.
+        guarded input port run: Svc.Sched
 
         # ----------------------------------------------------------------------
         # Commands
+        #
+        # There are none, deliberately. A passive component may not have async
+        # input, so a command here would have to be sync, and would then run
+        # its I2C inside the command dispatcher's thread and block every other
+        # command in the system for the duration. The ground-facing commands
+        # for the fuel gauge belong on the task that owns it.
         # ----------------------------------------------------------------------
-
-        @ Read every supported measurement and publish telemetry.
-        @ Reads are independent: a failure on one register does not stop the
-        @ others, so a single flaky register cannot cost an entire snapshot.
-        @ The command responds EXECUTION_ERROR if any read failed.
-        async command READ_ALL
-
-        @ Reset the fuel-gauge IC by writing CONFIG2 = 0x0001.
-        async command RESET
 
         # ----------------------------------------------------------------------
         # Telemetry
@@ -139,9 +197,6 @@ module project {
         @ Port for requesting the current time, used to timestamp events and
         @ telemetry.
         time get port timeCaller
-
-        @ Enables command handling
-        import Fw.Command
 
         @ Enables event handling
         import Fw.Event
