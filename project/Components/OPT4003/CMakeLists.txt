@@ -1,0 +1,19 @@
+register_fprime_library(
+    AUTOCODER_INPUTS
+        "${CMAKE_CURRENT_LIST_DIR}/OPT4003.fpp"
+    SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/OPT4003.cpp"
+)
+
+if(BUILD_TESTING)
+    register_fprime_ut(
+        AUTOCODER_INPUTS
+            "${CMAKE_CURRENT_LIST_DIR}/OPT4003.fpp"
+        SOURCES
+            "${CMAKE_CURRENT_LIST_DIR}/test/ut/OPT4003TestMain.cpp"
+            "${CMAKE_CURRENT_LIST_DIR}/test/ut/OPT4003Tester.cpp"
+        DEPENDS
+            STest
+        UT_AUTO_HELPERS
+    )
+endif()
