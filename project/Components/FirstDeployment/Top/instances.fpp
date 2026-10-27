@@ -91,8 +91,37 @@ module Components {
   @ the IMU.
   instance i2cDriver0: Zephyr.ZephyrI2cDriver base id 0x10016000
 
-  @ OPT4003 light sensor on the -X face, i2c0 address 0x44. Passive: its
-  @ I2C transactions run on whichever thread calls it.
-  instance lightSensorXm: project.OPT4003 base id 0x10007000
+  # OPT4003 light sensors, one per face plus the four angled sensors of the
+  # +Z sun sensor. Passive: their I2C transactions run on whichever thread
+  # calls them. The bus each is wired to is set in topology.fpp and its
+  # address in FirstDeploymentTopology.cpp; the pair identifies the sensor,
+  # since the same address is reused on both buses.
+
+  @ +X face light sensor, i2c1 0x44
+  instance lightSensorXp: project.OPT4003 base id 0x10007000
+
+  @ -X face light sensor, i2c0 0x44
+  instance lightSensorXm: project.OPT4003 base id 0x10008000
+
+  @ +Y face light sensor, i2c1 0x45
+  instance lightSensorYp: project.OPT4003 base id 0x10009000
+
+  @ -Y face light sensor, i2c0 0x45
+  instance lightSensorYm: project.OPT4003 base id 0x1000A000
+
+  @ +Z sun sensor, +X-facing element, i2c1 0x54
+  instance lightSensorZpXp: project.OPT4003 base id 0x1000B000
+
+  @ +Z sun sensor, -Y-facing element, i2c1 0x55
+  instance lightSensorZpYm: project.OPT4003 base id 0x1000C000
+
+  @ +Z sun sensor, -X-facing element, i2c1 0x56
+  instance lightSensorZpXm: project.OPT4003 base id 0x1000D000
+
+  @ +Z sun sensor, +Y-facing element, i2c1 0x57
+  instance lightSensorZpYp: project.OPT4003 base id 0x1000E000
+
+  @ -Z face light sensor, i2c0 0x46
+  instance lightSensorZm: project.OPT4003 base id 0x1000F000
 
 }

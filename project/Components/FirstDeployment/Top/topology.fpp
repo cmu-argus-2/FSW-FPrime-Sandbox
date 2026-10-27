@@ -37,7 +37,15 @@ module Components {
     # instance max17205Instance
     instance i2cDriver
     instance i2cDriver0
+    instance lightSensorXp
     instance lightSensorXm
+    instance lightSensorYp
+    instance lightSensorYm
+    instance lightSensorZpXp
+    instance lightSensorZpYm
+    instance lightSensorZpXm
+    instance lightSensorZpYp
+    instance lightSensorZm
 
   # ----------------------------------------------------------------------
   # Pattern graph specifiers
@@ -116,19 +124,47 @@ module Components {
     }
 
     connections FirstDeployment {
-      # -X light sensor -> i2c0 bus driver. Output ports must be connected:
+      # Light sensors -> I2C bus drivers. Output ports must be connected:
       # invoking an unconnected one asserts at runtime.
+      #
+      # i2c1: the +X/+Y faces and the +Z sun sensor.
+      lightSensorXp.busWriteRead -> i2cDriver.writeRead
+      lightSensorXp.busWrite -> i2cDriver.write
+      lightSensorYp.busWriteRead -> i2cDriver.writeRead
+      lightSensorYp.busWrite -> i2cDriver.write
+      lightSensorZpXp.busWriteRead -> i2cDriver.writeRead
+      lightSensorZpXp.busWrite -> i2cDriver.write
+      lightSensorZpYm.busWriteRead -> i2cDriver.writeRead
+      lightSensorZpYm.busWrite -> i2cDriver.write
+      lightSensorZpXm.busWriteRead -> i2cDriver.writeRead
+      lightSensorZpXm.busWrite -> i2cDriver.write
+      lightSensorZpYp.busWriteRead -> i2cDriver.writeRead
+      lightSensorZpYp.busWrite -> i2cDriver.write
+
+      # i2c0: the -X/-Y/-Z faces.
       lightSensorXm.busWriteRead -> i2cDriver0.writeRead
       lightSensorXm.busWrite -> i2cDriver0.write
+      lightSensorYm.busWriteRead -> i2cDriver0.writeRead
+      lightSensorYm.busWrite -> i2cDriver0.write
+      lightSensorZm.busWriteRead -> i2cDriver0.writeRead
+      lightSensorZm.busWrite -> i2cDriver0.write
 
       # Rate group drives sampling, standing in for the ADCS task until that
-      # exists: the first tick boots the sensor, every tick after reads it.
-      # A read normally takes three short transactions, but blocks for up to
-      # 1.1 s if the part never reports a finished conversion, which would
-      # overrun this 1 Hz group. When ADCS lands it should call
-      # lightSensorXm.boot and lightSensorXm.read instead, and this line
-      # should go.
-      rateGroup_1Hz.RateGroupMemberOut[6] -> lightSensorXm.run
+      # exists: the first tick boots each sensor, every tick after reads it.
+      # The 0.5 Hz group is used because it has exactly the nine free member
+      # ports needed; the 1 Hz group has four. A read normally takes three
+      # short transactions, but blocks for up to 1.1 s if a part never
+      # reports a finished conversion. When ADCS lands it should call each
+      # sensor's boot and read ports instead, and these lines should go.
+      rateGroup_0_5Hz.RateGroupMemberOut[1] -> lightSensorXp.run
+      rateGroup_0_5Hz.RateGroupMemberOut[2] -> lightSensorXm.run
+      rateGroup_0_5Hz.RateGroupMemberOut[3] -> lightSensorYp.run
+      rateGroup_0_5Hz.RateGroupMemberOut[4] -> lightSensorYm.run
+      rateGroup_0_5Hz.RateGroupMemberOut[5] -> lightSensorZpXp.run
+      rateGroup_0_5Hz.RateGroupMemberOut[6] -> lightSensorZpYm.run
+      rateGroup_0_5Hz.RateGroupMemberOut[7] -> lightSensorZpXm.run
+      rateGroup_0_5Hz.RateGroupMemberOut[8] -> lightSensorZpYp.run
+      rateGroup_0_5Hz.RateGroupMemberOut[9] -> lightSensorZm.run
     }
 
   }

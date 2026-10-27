@@ -69,7 +69,17 @@ void configureTopology() {
         Fw::Logger::log("[ERROR] Failed to open i2c0\n");
     }
 
-    lightSensorXm.configure(0x44);
+    // Light sensor addresses. Each sensor's bus is set by its wiring in
+    // topology.fpp; the same address is reused across the two buses.
+    lightSensorXp.configure(0x44);    // i2c1
+    lightSensorYp.configure(0x45);    // i2c1
+    lightSensorZpXp.configure(0x54);  // i2c1
+    lightSensorZpYm.configure(0x55);  // i2c1
+    lightSensorZpXm.configure(0x56);  // i2c1
+    lightSensorZpYp.configure(0x57);  // i2c1
+    lightSensorXm.configure(0x44);    // i2c0
+    lightSensorYm.configure(0x45);    // i2c0
+    lightSensorZm.configure(0x46);    // i2c0
 }
 
 void setupTopology(const TopologyState& state) {
