@@ -11,7 +11,7 @@
 // Necessary project-specified types
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
-#include <Fw/Logger/Logger.hpp>
+// #include <Fw/Logger/Logger.hpp>
 #include <Fw/Types/MallocAllocator.hpp>
 
 // Public functions for use in main program are namespaced with deployment module Components
@@ -53,24 +53,24 @@ void configureTopology() {
     // PrmDb file name must be supplied by the using topology
     FileHandling::prmDb.configure("PrmDb.dat");
 
-    // The peripheral 3.3 V rail is not switched on here. The board support
-    // package declares it as a regulator-fixed with regulator-boot-on and a
-    // 100 ms startup-delay-us, so Zephyr raises it and waits for it during
-    // driver init, before this function runs. Doing it again by hand would
-    // duplicate board knowledge that now lives in one place.
-    //
-    // Hand the I2C driver its Zephyr device handle. This is the one place
-    // where devicetree (which knows about pins) meets F Prime (which does
-    // not): everything above this line addresses the fuel gauge purely by
-    // I2C address and register number.
-    //
-    // i2c1 is SDA1/SCL1, GPIO46/47, per the board devicetree.
-    const Drv::I2cStatus i2cStatus = i2cDriver.open(DEVICE_DT_GET(DT_NODELABEL(i2c1)));
-    if (i2cStatus != Drv::I2cStatus::I2C_OK) {
-        // Nothing is up yet to carry an event, so say it on the console. A
-        // silent failure here would look exactly like a broken driver later.
-        Fw::Logger::log("[ERROR] Failed to open i2c1 for the fuel gauge\n");
-    }
+    // // The peripheral 3.3 V rail is not switched on here. The board support
+    // // package declares it as a regulator-fixed with regulator-boot-on and a
+    // // 100 ms startup-delay-us, so Zephyr raises it and waits for it during
+    // // driver init, before this function runs. Doing it again by hand would
+    // // duplicate board knowledge that now lives in one place.
+    // //
+    // // Hand the I2C driver its Zephyr device handle. This is the one place
+    // // where devicetree (which knows about pins) meets F Prime (which does
+    // // not): everything above this line addresses the fuel gauge purely by
+    // // I2C address and register number.
+    // //
+    // // i2c1 is SDA1/SCL1, GPIO46/47, per the board devicetree.
+    // const Drv::I2cStatus i2cStatus = i2cDriver.open(DEVICE_DT_GET(DT_NODELABEL(i2c1)));
+    // if (i2cStatus != Drv::I2cStatus::I2C_OK) {
+    //     // Nothing is up yet to carry an event, so say it on the console. A
+    //     // silent failure here would look exactly like a broken driver later.
+    //     Fw::Logger::log("[ERROR] Failed to open i2c1 for the fuel gauge\n");
+    // }
 }
 
 void setupTopology(const TopologyState& state) {
