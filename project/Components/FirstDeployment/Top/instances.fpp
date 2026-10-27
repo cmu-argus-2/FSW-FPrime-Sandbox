@@ -82,4 +82,17 @@ module Components {
   # instance comDriver: Drv.TcpClient base id 0x10014000
   instance comDriver: Zephyr.ZephyrUartDriver base id 0x10014000
 
+  @ I2C bus driver for i2c1 (SDA1/SCL1, GPIO46/47): the +X/+Y/+Z faces,
+  @ RTC, fuel gauge and power monitors. Passive, with guarded ports, so
+  @ devices sharing the bus are serialised by its mutex.
+  instance i2cDriver: Zephyr.ZephyrI2cDriver base id 0x10015000
+
+  @ I2C bus driver for i2c0 (SDA0/SCL0, GPIO24/25): the -X/-Y/-Z faces and
+  @ the IMU.
+  instance i2cDriver0: Zephyr.ZephyrI2cDriver base id 0x10016000
+
+  @ OPT4003 light sensor on the -X face, i2c0 address 0x44. Passive: its
+  @ I2C transactions run on whichever thread calls it.
+  instance lightSensorXm: project.OPT4003 base id 0x10007000
+
 }

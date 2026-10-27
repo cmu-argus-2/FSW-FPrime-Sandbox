@@ -11,6 +11,7 @@
 // Necessary project-specified types
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <Fw/Logger/Logger.hpp>
 #include <Fw/Types/MallocAllocator.hpp>
 
 // Public functions for use in main program are namespaced with deployment module Components
@@ -51,6 +52,24 @@ void configureTopology() {
 
     // PrmDb file name must be supplied by the using topology
     FileHandling::prmDb.configure("PrmDb.dat");
+
+    // The peripheral 3.3 V rail that powers every I2C device is a
+    // regulator-fixed with regulator-boot-on in the board devicetree, so
+    // Zephyr has already raised it and waited out its startup delay.
+    //
+    // Hand the I2C driver its Zephyr device handle. This is where devicetree
+    // (which knows about pins) meets F Prime (which does not): from here on
+    // a device is addressed only by which bus driver it is wired to in
+    // topology.fpp and the I2C address it is configured with below.
+    if (i2cDriver.open(DEVICE_DT_GET(DT_NODELABEL(i2c1))) != Drv::I2cStatus::I2C_OK) {
+        // Nothing is up yet to carry an event, so say it on the console.
+        Fw::Logger::log("[ERROR] Failed to open i2c1\n");
+    }
+    if (i2cDriver0.open(DEVICE_DT_GET(DT_NODELABEL(i2c0))) != Drv::I2cStatus::I2C_OK) {
+        Fw::Logger::log("[ERROR] Failed to open i2c0\n");
+    }
+
+    lightSensorXm.configure(0x44);
 }
 
 void setupTopology(const TopologyState& state) {

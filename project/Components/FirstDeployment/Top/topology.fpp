@@ -35,6 +35,9 @@ module Components {
     instance cmdSeq
     instance hiCmpntInstance
     # instance max17205Instance
+    instance i2cDriver
+    instance i2cDriver0
+    instance lightSensorXm
 
   # ----------------------------------------------------------------------
   # Pattern graph specifiers
@@ -113,7 +116,19 @@ module Components {
     }
 
     connections FirstDeployment {
+      # -X light sensor -> i2c0 bus driver. Output ports must be connected:
+      # invoking an unconnected one asserts at runtime.
+      lightSensorXm.busWriteRead -> i2cDriver0.writeRead
+      lightSensorXm.busWrite -> i2cDriver0.write
 
+      # Rate group drives sampling, standing in for the ADCS task until that
+      # exists: the first tick boots the sensor, every tick after reads it.
+      # A read normally takes three short transactions, but blocks for up to
+      # 1.1 s if the part never reports a finished conversion, which would
+      # overrun this 1 Hz group. When ADCS lands it should call
+      # lightSensorXm.boot and lightSensorXm.read instead, and this line
+      # should go.
+      rateGroup_1Hz.RateGroupMemberOut[6] -> lightSensorXm.run
     }
 
   }
