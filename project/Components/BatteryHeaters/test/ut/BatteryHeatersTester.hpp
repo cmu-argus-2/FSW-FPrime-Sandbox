@@ -11,65 +11,61 @@
 
 namespace project {
 
-  class BatteryHeatersTester final : public BatteryHeatersGTestBase {
+class BatteryHeatersTester final : public BatteryHeatersGTestBase {
+  public:
+    static const FwSizeType MAX_HISTORY_SIZE = 10;
+    static const FwEnumStoreType TEST_INSTANCE_ID = 0;
 
-    public:
+    //! \param heater1Present  false = leave heater1Write/heater1Read
+    //!                        unconnected (single-heater board)
+    explicit BatteryHeatersTester(bool heater1Present = true);
+    ~BatteryHeatersTester();
 
-      static const FwSizeType MAX_HISTORY_SIZE = 10;
-      static const FwEnumStoreType TEST_INSTANCE_ID = 0;
+    // ----------------------------------------------------------------
+    // Tests: dual-heater board
+    // ----------------------------------------------------------------
 
-      //! \param heater1Present  false = leave heater1Write/heater1Read
-      //!                        unconnected (single-heater board)
-      explicit BatteryHeatersTester(bool heater1Present = true);
-      ~BatteryHeatersTester();
+    void testEnableHeater0DrivesMasterAndHeater0();
+    void testEnableHeater0TwiceWritesMasterOnce();
+    void testDisableHeater0DropsMasterWhenHeater1Off();
+    void testEnableHeater1DrivesMasterAndHeater1();
+    void testMasterStaysHighUntilBothHeatersOff();
+    void testDisableHeater1DropsMasterWhenHeater0Off();
 
-      // ----------------------------------------------------------------
-      // Tests: dual-heater board
-      // ----------------------------------------------------------------
+    // ----------------------------------------------------------------
+    // Tests: single-heater board (heater 1 unconnected)
+    // ----------------------------------------------------------------
 
-      void testEnableHeater0DrivesMasterAndHeater0();
-      void testEnableHeater0TwiceWritesMasterOnce();
-      void testDisableHeater0DropsMasterWhenHeater1Off();
-      void testEnableHeater1DrivesMasterAndHeater1();
-      void testMasterStaysHighUntilBothHeatersOff();
-      void testDisableHeater1DropsMasterWhenHeater0Off();
+    void testEnableHeater1RejectedWhenNotPresent();
+    void testDisableHeater1RejectedWhenNotPresent();
+    void testDisableHeater0DropsMasterWhenHeater1NotPresent();
 
-      // ----------------------------------------------------------------
-      // Tests: single-heater board (heater 1 unconnected)
-      // ----------------------------------------------------------------
+  private:
+    // ----------------------------------------------------------------
+    // GPIO mocks: record the call (base class) and return m_gpioStatus
+    // ----------------------------------------------------------------
 
-      void testEnableHeater1RejectedWhenNotPresent();
-      void testDisableHeater1RejectedWhenNotPresent();
-      void testDisableHeater0DropsMasterWhenHeater1NotPresent();
+    Drv::GpioStatus from_enableWrite_handler(FwIndexType portNum, const Fw::Logic& state) override;
+    Drv::GpioStatus from_heater0Write_handler(FwIndexType portNum, const Fw::Logic& state) override;
+    Drv::GpioStatus from_heater1Write_handler(FwIndexType portNum, const Fw::Logic& state) override;
 
-    private:
+    // ----------------------------------------------------------------
+    // Helpers
+    // ----------------------------------------------------------------
 
-      // ----------------------------------------------------------------
-      // GPIO mocks: record the call (base class) and return m_gpioStatus
-      // ----------------------------------------------------------------
+    void connectPorts();
+    void initComponents();
 
-      Drv::GpioStatus from_enableWrite_handler(FwIndexType portNum, const Fw::Logic& state) override;
-      Drv::GpioStatus from_heater0Write_handler(FwIndexType portNum, const Fw::Logic& state) override;
-      Drv::GpioStatus from_heater1Write_handler(FwIndexType portNum, const Fw::Logic& state) override;
+    //! Send a command and dispatch it (passive component: runs inline)
+    void sendAndCheck(FwOpcodeType opCode, Fw::CmdResponse expected);
 
-      // ----------------------------------------------------------------
-      // Helpers
-      // ----------------------------------------------------------------
+  private:
+    BatteryHeaters component;
+    bool m_heater1Present;
+    Drv::GpioStatus m_gpioStatus;  //!< What every mocked GPIO write returns
+    U32 m_cmdSeq;
+};
 
-      void connectPorts();
-      void initComponents();
-
-      //! Send a command and dispatch it (passive component: runs inline)
-      void sendAndCheck(FwOpcodeType opCode, Fw::CmdResponse expected);
-
-    private:
-
-      BatteryHeaters component;
-      bool m_heater1Present;
-      Drv::GpioStatus m_gpioStatus;  //!< What every mocked GPIO write returns
-      U32 m_cmdSeq;
-  };
-
-}
+}  // namespace project
 
 #endif
