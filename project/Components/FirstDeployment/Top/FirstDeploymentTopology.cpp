@@ -9,9 +9,11 @@
 // #include <project/Components/FirstDeployment/Top/FirstDeploymentPacketsAc.hpp>
 
 // Necessary project-specified types
-#include <Fw/Types/MallocAllocator.hpp>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
+#include <zephyr/drivers/gpio.h>
+#include <Fw/Types/Assert.hpp>
+#include <Fw/Types/MallocAllocator.hpp>
 
 // Public functions for use in main program are namespaced with deployment module Components
 // This is also the namespace where the topology components are instantiated by FPP.
@@ -51,6 +53,26 @@ void configureTopology() {
 
     // PrmDb file name must be supplied by the using topology
     FileHandling::prmDb.configure("PrmDb.dat");
+
+    // static const struct gpio_dt_spec periphPwrEn =
+    //     GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), periph_pwr_en_gpios);
+    // FW_ASSERT(gpio_is_ready_dt(&periphPwrEn));
+    // FW_ASSERT(gpio_pin_configure_dt(&periphPwrEn, GPIO_OUTPUT_ACTIVE) == 0);
+    // k_msleep(100);
+
+    // Battery heaters: HEAT_EN GPIO6, HEAT0_ON GPIO4, HEAT1_ON GPIO5
+    static const struct gpio_dt_spec heatEnPin = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), heat_en_gpios);
+    static const struct gpio_dt_spec heat0OnPin = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), heat0_on_gpios);
+    static const struct gpio_dt_spec heat1OnPin = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), heat1_on_gpios);
+
+    FW_ASSERT(heatEnGpio.open(heatEnPin, Zephyr::ZephyrGpioDriver::GpioConfiguration::OUT) == Os::File::Status::OP_OK);
+    FW_ASSERT(heat0Gpio.open(heat0OnPin, Zephyr::ZephyrGpioDriver::GpioConfiguration::OUT) == Os::File::Status::OP_OK);
+    FW_ASSERT(heat1Gpio.open(heat1OnPin, Zephyr::ZephyrGpioDriver::GpioConfiguration::OUT) == Os::File::Status::OP_OK);
+
+    // every heater line starts OFF
+    gpio_pin_set_dt(&heatEnPin, 0);
+    gpio_pin_set_dt(&heat0OnPin, 0);
+    gpio_pin_set_dt(&heat1OnPin, 0);
 }
 
 void setupTopology(const TopologyState& state) {
