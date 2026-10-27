@@ -73,7 +73,7 @@ F32 MAX17205::decodeTime(U16 raw) {
     return static_cast<F32>(raw) * 5.625F;
 }
 
-F32 MAX17205::decodeTemperature(I16 raw) {
+I32 MAX17205::decodeTemperature(I16 raw) {
     // Temp is 1/256 degree C per count; 0.390625 is 100/256, converting
     // straight to centi-Celsius.
     //
@@ -89,7 +89,10 @@ F32 MAX17205::decodeTemperature(I16 raw) {
     // is too cold, so it has to be right even though nothing on board
     // currently actuates on it -- the thermistor channels are the ones wired
     // to heater decisions, and they use a separate unsigned-Kelvin encoding.
-    return static_cast<F32>(raw) * 0.390625F;
+    // Scale in floating point, then truncate once. Doing the multiply in
+    // integers instead (raw * 100 / 256) would be exact too, but this keeps
+    // the datasheet's constant visible in the code.
+    return static_cast<I32>(static_cast<F32>(raw) * 0.390625F);
 }
 
 I32 MAX17205::decodeThermistorTemperature(U16 raw) {

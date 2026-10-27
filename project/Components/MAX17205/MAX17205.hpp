@@ -75,9 +75,11 @@ class MAX17205 final : public MAX17205ComponentBase {
     //! TTE / TTF -> seconds. 5.625 s per count.
     static F32 decodeTime(U16 raw);
 
-    //! Temp -> centi-Celsius. 0.390625 centi-Celsius per count.
-    //! Signed: the pack can and does go below freezing.
-    static F32 decodeTemperature(I16 raw);
+    //! Temp -> centi-Celsius, truncated toward zero.
+    //! 0.390625 centi-Celsius per count, signed: the pack can and does go
+    //! below freezing. Integer so that all four temperature channels share
+    //! one type as well as one unit.
+    static I32 decodeTemperature(I16 raw);
 
     //! Shadow-RAM thermistor register -> centi-Celsius.
     static I32 decodeThermistorTemperature(U16 raw);

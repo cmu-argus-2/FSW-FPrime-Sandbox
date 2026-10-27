@@ -78,21 +78,28 @@ TEST(MAX17205Decode, ScalesTimes) {
 }
 
 TEST(MAX17205Decode, ScalesPackTemperature) {
-    COMMENT("Temp is signed, 0.390625 centi-Celsius per count.");
-    EXPECT_FLOAT_EQ(project::MAX17205::decodeTemperature(0), 0.0F);
-    EXPECT_FLOAT_EQ(project::MAX17205::decodeTemperature(256), 100.0F);    // 1 C
-    EXPECT_FLOAT_EQ(project::MAX17205::decodeTemperature(5632), 2200.0F);  // 22 C
+    COMMENT("Temp is signed centi-Celsius, 0.390625 per count, truncated.");
+    EXPECT_EQ(project::MAX17205::decodeTemperature(0), 0);
+    EXPECT_EQ(project::MAX17205::decodeTemperature(256), 100);    // 1 C
+    EXPECT_EQ(project::MAX17205::decodeTemperature(5632), 2200);  // 22 C
 
     // Sub-zero readings must come back negative. A pack in eclipse is exactly
     // the case a battery heater has to react to, so a decode that reported
     // -1 C as a large positive number would hide the condition that matters
     // most.
-    EXPECT_FLOAT_EQ(project::MAX17205::decodeTemperature(-256), -100.0F);    // -1 C
-    EXPECT_FLOAT_EQ(project::MAX17205::decodeTemperature(-5120), -2000.0F);  // -20 C
+    EXPECT_EQ(project::MAX17205::decodeTemperature(-256), -100);    // -1 C
+    EXPECT_EQ(project::MAX17205::decodeTemperature(-5120), -2000);  // -20 C
 
     // The full register path, not just the arithmetic: 0xFF00 off the wire is
     // -1 C, not 25500 centi-Celsius.
-    EXPECT_FLOAT_EQ(project::MAX17205::decodeTemperature(project::MAX17205::toSigned(0xFF00)), -100.0F);
+    EXPECT_EQ(project::MAX17205::decodeTemperature(project::MAX17205::toSigned(0xFF00)), -100);
+
+    // Truncation goes toward zero on both sides of it, so a reading either
+    // side of freezing never rounds across zero and trips a heater threshold.
+    EXPECT_EQ(project::MAX17205::decodeTemperature(1), 0);    // +0.39 -> 0
+    EXPECT_EQ(project::MAX17205::decodeTemperature(-1), 0);   // -0.39 -> 0
+    EXPECT_EQ(project::MAX17205::decodeTemperature(3), 1);    // +1.17 -> 1
+    EXPECT_EQ(project::MAX17205::decodeTemperature(-3), -1);  // -1.17 -> -1
 }
 
 TEST(MAX17205Decode, ScalesThermistorTemperature) {

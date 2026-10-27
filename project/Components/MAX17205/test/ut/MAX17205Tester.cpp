@@ -278,7 +278,7 @@ void MAX17205Tester::assertCleanSampleTelemetry() {
     ASSERT_TLM_TimeSincePowerUp_SIZE(1);
     ASSERT_TLM_TimeSincePowerUp(0, 77);
     ASSERT_TLM_Temperature_SIZE(1);
-    ASSERT_TLM_Temperature(0, 2200.0F);
+    ASSERT_TLM_Temperature(0, 2200);
     ASSERT_TLM_TemperatureAin1_SIZE(1);
     ASSERT_TLM_TemperatureAin1(0, 2690);
     ASSERT_TLM_TemperatureAin2_SIZE(1);
@@ -504,7 +504,7 @@ void MAX17205Tester::testSubZeroTemperature() {
     this->invoke_to_run(0, 0);
 
     ASSERT_TLM_Temperature_SIZE(1);
-    ASSERT_TLM_Temperature(0, -100.0F);
+    ASSERT_TLM_Temperature(0, -100);
 
     // -20 C, a plausible eclipse reading.
     this->overrideRegister(MAIN_ADDR, REG_TEMP, 0xEC00);
@@ -512,7 +512,7 @@ void MAX17205Tester::testSubZeroTemperature() {
     this->invoke_to_run(0, 0);
 
     ASSERT_TLM_Temperature_SIZE(1);
-    ASSERT_TLM_Temperature(0, -2000.0F);
+    ASSERT_TLM_Temperature(0, -2000);
 
     // The thermistor channels are a separate, genuinely unsigned encoding and
     // must be unaffected by any of this.

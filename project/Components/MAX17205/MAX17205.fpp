@@ -17,7 +17,7 @@ module project {
         timeToEmpty: F32         @< Time to empty in seconds
         timeToFull: F32          @< Time to full in seconds
         timeSincePowerUp: U16    @< TimerH, raw counts (3.2 h per count)
-        temperature: F32         @< Pack temperature in centi-Celsius, signed
+        temperature: I32         @< Pack temperature in centi-Celsius, signed
         temperatureAin1: I32     @< AIN1 thermistor in centi-Celsius
         temperatureAin2: I32     @< AIN2 thermistor in centi-Celsius
         temperatureDie: I32      @< Internal die temperature in centi-Celsius
@@ -157,9 +157,16 @@ module project {
         @ Time to full in seconds. Register TTF, 5.625 s per count.
         telemetry TimeToFull: F32
 
-        @ Battery pack temperature in centi-Celsius. Register Temp,
-        @ 0.390625 centi-Celsius per count.
-        telemetry Temperature: F32
+        @ Battery pack temperature in centi-Celsius, signed. Register Temp,
+        @ 0.390625 centi-Celsius per count, truncated toward zero.
+        @
+        @ I32 like the three thermistor channels below: all four temperatures
+        @ are the same quantity in the same unit, so they carry the same type.
+        @ A mixed set invites a conversion at the point where a temperature is
+        @ compared against a threshold, which is exactly where a unit mistake
+        @ turns into a hardware action. The ~0.39 centi-Celsius of resolution
+        @ given up by truncating is far below the sensor's own accuracy.
+        telemetry Temperature: I32
 
         @ AIN1 thermistor temperature in centi-Celsius, from shadow RAM.
         telemetry TemperatureAin1: I32
