@@ -3,6 +3,7 @@
 # add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/MyComponent")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/HiComponent/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/BatteryHeaters/")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ADM1176/")
 
 # The deployment registers itself with register_fprime_zephyr_deployment, which
 # only exists when the Zephyr library is loaded, and its topology pulls in
