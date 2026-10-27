@@ -34,7 +34,8 @@ module Components {
     instance comDriver
     instance cmdSeq
     instance hiCmpntInstance
-    # instance max17205Instance
+    instance max17205Instance
+    instance i2cDriver
 
   # ----------------------------------------------------------------------
   # Pattern graph specifiers
@@ -113,7 +114,22 @@ module Components {
     }
 
     connections FirstDeployment {
+      # MAX17205 fuel gauge -> I2C bus driver.
+      #
+      # These are output ports on the component, so they must be connected:
+      # invoking an unconnected output port asserts at runtime. The driver's
+      # input ports are guarded, which is what keeps this device's traffic
+      # from interleaving with anything else that shares the bus.
+      max17205Instance.busWriteRead -> i2cDriver.writeRead
+      max17205Instance.busWrite -> i2cDriver.write
 
+      # Rate group drives sampling, standing in for the EPS task until that
+      # exists. The gauge is passive, so these ~15 blocking I2C transactions
+      # run on the rate group's thread; at 0.25 Hz against a 4 s cycle there
+      # is ample margin. When EPS lands it should call max17205Instance.read
+      # instead and this line should go away, so that the bus traffic is spent
+      # out of the task's budget rather than the rate group's.
+      rateGroup_0_25Hz.RateGroupMemberOut[2] -> max17205Instance.run
     }
 
   }
