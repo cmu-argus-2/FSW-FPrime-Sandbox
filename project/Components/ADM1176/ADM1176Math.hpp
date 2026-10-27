@@ -25,8 +25,7 @@ inline uint32_t currentMilliamps(uint16_t code, uint32_t senseResistanceMilliOhm
     if (senseResistanceMilliOhms == 0) {
         return 0;
     }
-    return static_cast<uint32_t>((static_cast<uint64_t>(code) * 105840U) /
-                                  (4096ULL * senseResistanceMilliOhms));
+    return static_cast<uint32_t>((static_cast<uint64_t>(code) * 105840U) / (4096ULL * senseResistanceMilliOhms));
 }
 
 }  // namespace ADM1176Math

@@ -16,7 +16,6 @@ module project {
         event I2cError(operation: U8, status: Drv.I2cStatus) \
             severity warning high format "ADM1176 I2C operation {} failed: {}"
 
-        import Drv.I2c
         import Fw.Channel
         import Fw.Event
     }

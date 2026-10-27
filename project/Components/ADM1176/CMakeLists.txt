@@ -4,3 +4,8 @@ register_fprime_library(
     SOURCES
         "${CMAKE_CURRENT_LIST_DIR}/ADM1176.cpp"
 )
+
+register_fprime_ut(
+    SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/test/ut/ADM1176MathTest.cpp"
+)
