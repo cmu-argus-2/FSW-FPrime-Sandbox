@@ -1,7 +1,7 @@
 # Native (host) unit tests. These do not need Zephyr or the ~9 GB west
 # workspace: the top-level CMakeLists.txt skips find_package(Zephyr) under
-# BUILD_TESTING, and project/Components/CMakeLists.txt builds the testable
-# components instead of the Zephyr-only deployment.
+# BUILD_TESTING, and project/CMakeLists.txt builds the testable drivers and
+# tasks but not the Zephyr-only subtopologies and deployments.
 name: Unit tests
 
 # Called by ci.yml. `workflow_call` is the only trigger on purpose: adding
