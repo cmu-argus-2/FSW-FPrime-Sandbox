@@ -4,6 +4,8 @@ register_fprime_config(
         "${CMAKE_CURRENT_LIST_DIR}/PlatformCfg.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/TlmChanImplCfg.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/CdhCoreConfig.fpp"
+        "${CMAKE_CURRENT_LIST_DIR}/CdhCoreTlmConfig.fpp"
+        "${CMAKE_CURRENT_LIST_DIR}/TlmPacketizerCfg.hpp"
         "${CMAKE_CURRENT_LIST_DIR}/ComCcsdsConfig.fpp"
         "${CMAKE_CURRENT_LIST_DIR}/FileHandlingConfig.fpp"
     INTERFACE
