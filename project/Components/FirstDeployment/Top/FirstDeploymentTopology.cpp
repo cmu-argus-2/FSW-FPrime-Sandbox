@@ -54,11 +54,10 @@ void configureTopology() {
     // PrmDb file name must be supplied by the using topology
     FileHandling::prmDb.configure("PrmDb.dat");
 
-    // static const struct gpio_dt_spec periphPwrEn =
-    //     GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), periph_pwr_en_gpios);
-    // FW_ASSERT(gpio_is_ready_dt(&periphPwrEn));
-    // FW_ASSERT(gpio_pin_configure_dt(&periphPwrEn, GPIO_OUTPUT_ACTIVE) == 0);
-    // k_msleep(100);
+    // The peripheral 3.3 V rail is not switched on here. The board support
+    // package declares it as a regulator-fixed with regulator-boot-on and a
+    // 100 ms startup-delay-us, so Zephyr raises it and waits for it during
+    // driver init, before this function runs.
 
     // Battery heaters: HEAT_EN GPIO6, HEAT0_ON GPIO4, HEAT1_ON GPIO5
     static const struct gpio_dt_spec heatEnPin = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), heat_en_gpios);

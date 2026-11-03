@@ -90,4 +90,13 @@ module Components {
 
   instance heat1Gpio: Zephyr.ZephyrGpioDriver base id 0x10018000
 
+  # @ I2C bus driver. Passive on purpose: its handlers are meant to run on
+  # @ whichever component's thread called them, and its ports are guarded, so
+  # @ two components sharing the bus are serialised by its mutex.
+  # instance i2cDriver: Zephyr.ZephyrI2cDriver base id 0x10019000
+
+  # @ MAX17205 fuel gauge. Passive: it owns no thread, so its I2C transactions
+  # @ run on whichever task calls it (the EPS task, once that exists).
+  # instance max17205Instance: project.MAX17205 base id 0x10006000
+
 }
