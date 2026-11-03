@@ -35,6 +35,10 @@ module Components {
     instance cmdSeq
     instance hiCmpntInstance
     # instance max17205Instance
+    instance batteryHeaters
+    instance heatEnGpio
+    instance heat0Gpio
+    instance heat1Gpio
 
   # ----------------------------------------------------------------------
   # Pattern graph specifiers
@@ -113,6 +117,17 @@ module Components {
     }
 
     connections FirstDeployment {
+      # HEAT_EN, GPIO6
+      batteryHeaters.enableWrite  -> heatEnGpio.gpioWrite
+      batteryHeaters.enableRead   -> heatEnGpio.gpioRead
+
+      # HEAT0_ON, GPIO4
+      batteryHeaters.heater0Write -> heat0Gpio.gpioWrite
+      batteryHeaters.heater0Read  -> heat0Gpio.gpioRead
+
+      # HEAT1_ON, GPIO5
+      batteryHeaters.heater1Write -> heat1Gpio.gpioWrite
+      batteryHeaters.heater1Read  -> heat1Gpio.gpioRead
 
     }
 

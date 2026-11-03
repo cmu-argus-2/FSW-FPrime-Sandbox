@@ -11,7 +11,8 @@
 // Necessary project-specified types
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
-// #include <Fw/Logger/Logger.hpp>
+#include <zephyr/drivers/gpio.h>
+#include <Fw/Types/Assert.hpp>
 #include <Fw/Types/MallocAllocator.hpp>
 
 // Public functions for use in main program are namespaced with deployment module Components
@@ -53,24 +54,24 @@ void configureTopology() {
     // PrmDb file name must be supplied by the using topology
     FileHandling::prmDb.configure("PrmDb.dat");
 
-    // // The peripheral 3.3 V rail is not switched on here. The board support
-    // // package declares it as a regulator-fixed with regulator-boot-on and a
-    // // 100 ms startup-delay-us, so Zephyr raises it and waits for it during
-    // // driver init, before this function runs. Doing it again by hand would
-    // // duplicate board knowledge that now lives in one place.
-    // //
-    // // Hand the I2C driver its Zephyr device handle. This is the one place
-    // // where devicetree (which knows about pins) meets F Prime (which does
-    // // not): everything above this line addresses the fuel gauge purely by
-    // // I2C address and register number.
-    // //
-    // // i2c1 is SDA1/SCL1, GPIO46/47, per the board devicetree.
-    // const Drv::I2cStatus i2cStatus = i2cDriver.open(DEVICE_DT_GET(DT_NODELABEL(i2c1)));
-    // if (i2cStatus != Drv::I2cStatus::I2C_OK) {
-    //     // Nothing is up yet to carry an event, so say it on the console. A
-    //     // silent failure here would look exactly like a broken driver later.
-    //     Fw::Logger::log("[ERROR] Failed to open i2c1 for the fuel gauge\n");
-    // }
+    // The peripheral 3.3 V rail is not switched on here. The board support
+    // package declares it as a regulator-fixed with regulator-boot-on and a
+    // 100 ms startup-delay-us, so Zephyr raises it and waits for it during
+    // driver init, before this function runs.
+
+    // Battery heaters: HEAT_EN GPIO6, HEAT0_ON GPIO4, HEAT1_ON GPIO5
+    static const struct gpio_dt_spec heatEnPin = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), heat_en_gpios);
+    static const struct gpio_dt_spec heat0OnPin = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), heat0_on_gpios);
+    static const struct gpio_dt_spec heat1OnPin = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), heat1_on_gpios);
+
+    FW_ASSERT(heatEnGpio.open(heatEnPin, Zephyr::ZephyrGpioDriver::GpioConfiguration::OUT) == Os::File::Status::OP_OK);
+    FW_ASSERT(heat0Gpio.open(heat0OnPin, Zephyr::ZephyrGpioDriver::GpioConfiguration::OUT) == Os::File::Status::OP_OK);
+    FW_ASSERT(heat1Gpio.open(heat1OnPin, Zephyr::ZephyrGpioDriver::GpioConfiguration::OUT) == Os::File::Status::OP_OK);
+
+    // every heater line starts OFF
+    gpio_pin_set_dt(&heatEnPin, 0);
+    gpio_pin_set_dt(&heat0OnPin, 0);
+    gpio_pin_set_dt(&heat1OnPin, 0);
 }
 
 void setupTopology(const TopologyState& state) {
