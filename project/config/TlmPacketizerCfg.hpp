@@ -9,9 +9,8 @@
  *
  * Both limits are checked by assertions in setPacketList(), which runs at
  * boot. Exceeding either one stops the deployment from starting rather
- * than failing the build, so raise them when the largest deployment's
- * packet set (Argus, project/Deployments/Argus/Top/ArgusPackets.fppi)
- * grows past them.
+ * than failing the build, so raise them when any deployment's packet set
+ * (project/Deployments/<Name>/Top/<Name>Packets.fppi) grows past them.
  */
 
 #ifndef SVC_TLMPACKETIZER_TLMPACKETIZERCOMPONENTIMPLCFG_HPP_
@@ -21,11 +20,11 @@
 
 namespace Svc {
 //! Maximum number of packets that the packetizer can handle.
-//! Must be >= the number of packets in the largest deployment (Argus: currently 10).
+//! Must be >= the number of packets in the largest deployment (currently AdcsBench: 11).
 static const FwChanIdType MAX_PACKETIZER_PACKETS = 16;
 
 //! Maximum number of channels that the packetizer can handle. Must be >= number of non-omitted channels
-//! in the largest deployment (Argus: currently 71, counting the packetizer's own two).
+//! in the largest deployment (currently AdcsBench: 87, counting the packetizer's own two).
 static const FwChanIdType MAX_PACKETIZER_CHANNELS = 128;
 
 //! Maximum number of missing channels to track and report
