@@ -7,3 +7,4 @@
 # registers its unit tests.
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ADM1176/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/BatteryHeaters/")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/MAX17205/")
