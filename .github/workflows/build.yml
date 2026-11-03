@@ -33,8 +33,16 @@ env:
 
 jobs:
   build:
-    name: RP2350 firmware
+    name: RP2350 firmware (${{ matrix.deployment }})
     runs-on: ubuntu-latest
+    # Every deployment under project/Deployments is built, so a change to a
+    # shared subtopology cannot break a bench nobody happened to build. Zephyr
+    # allows one deployment per build cache, hence one job each. Add new
+    # deployments to this list.
+    strategy:
+      fail-fast: false
+      matrix:
+        deployment: [Argus, EpsBench, AdcsBench]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -161,9 +169,9 @@ jobs:
       # which fpp-syntax in the Format workflow deliberately does not do.
       #
       # The board comes from default_cmake_options in settings.ini, so the
-      # `zephyr` platform argument is all that is needed here.
+      # `zephyr` platform argument and the deployment are all that is needed.
       - name: Generate build cache
-        run: fprime-util generate zephyr
+        run: fprime-util generate zephyr -DARGUS_DEPLOYMENT=${{ matrix.deployment }}
 
       - name: Build firmware
         run: fprime-util build zephyr
@@ -189,7 +197,7 @@ jobs:
           sram=532480
 
           {
-            echo "### RP2350 size report"
+            echo "### RP2350 size report: ${{ matrix.deployment }}"
             echo
             echo '| Region | Bytes | Note |'
             echo '| --- | ---: | --- |'
@@ -213,7 +221,7 @@ jobs:
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ github.sha }}
+          name: firmware-${{ matrix.deployment }}-${{ github.sha }}
           path: |
             build-fprime-automatic-zephyr/zephyr/zephyr.uf2
             build-fprime-automatic-zephyr/zephyr/zephyr.elf
@@ -227,7 +235,7 @@ jobs:
       - name: Upload GDS dictionary
         uses: actions/upload-artifact@v4
         with:
-          name: gds-dictionary-${{ github.sha }}
-          path: build-fprime-automatic-zephyr/project/Components/FirstDeployment/Top/FirstDeploymentTopologyDictionary.json
+          name: gds-dictionary-${{ matrix.deployment }}-${{ github.sha }}
+          path: build-fprime-automatic-zephyr/project/Deployments/${{ matrix.deployment }}/Top/${{ matrix.deployment }}TopologyDictionary.json
           if-no-files-found: error
           retention-days: 14
