@@ -8,6 +8,12 @@
 
   packet EpsTask id 201 group 1 {
     Eps.epsManager.RunCount
+    Eps.epsManager.Alerts
+  }
+
+  # The spec's 44-field record, about 165 bytes. Updates every 5th run.
+  packet EpsData id 204 group 1 {
+    Eps.epsManager.Data
   }
 
   # Written by MAX17205's read port, so it updates every fuel gauge cycle.
