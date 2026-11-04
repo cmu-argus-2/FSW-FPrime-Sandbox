@@ -68,9 +68,11 @@ Step-by-step instructions for adding a driver, a task or a subsystem are in
 ## Setup
 
 ```bash
-git clone <this-repo> && cd FSW-fprime-sandbox
-git submodule update --init --recursive
+git clone --recurse-submodules git@github.com:cmu-argus-2/FSW-FPrime-Sandbox.git
+cd FSW-FPrime-Sandbox
 ```
+
+In an existing clone without the submodules, run `git submodule update --init --recursive`.
 
 ### Apply the submodule patches
 
@@ -84,7 +86,7 @@ repository directly, because git tracks submodules by commit SHA rather than by 
 | Patch | Fixes |
 | --- | --- |
 | `0001-fprime-install-destination.patch` | F´'s install step passes `CMAKE_INSTALL_PREFIX=/`, which newer CMake turns into an empty destination, failing the build. |
-| `0002-fprime-zephyr-uart-irq-update.patch` | Zephyr 4.4 changed `uart_irq_update()` from returning `int` to `void`; the F´ Zephyr UART driver still checked its return value. |
+| `0002-fprime-zephyr-uart-irq-update.patch` | Zephyr 4.4.99 (the 4.5 development line) changed `uart_irq_update()` from returning `int` to `void`; the F´ Zephyr UART driver still checked its return value. |
 
 The script is idempotent — running it twice is harmless.
 
@@ -97,12 +99,21 @@ the same tree the deployment was built and tested against:
 ```bash
 python3 -m venv fprime-venv
 source fprime-venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt west
+# F´ pins cmake 3.26, but Zephyr needs at least 3.28. 4.4.3 is what CI uses.
+pip install 'cmake==4.4.3'
 
-# `.west/` is not committed either, so create the workspace against the
-# in-tree manifest before updating. Only needed once.
-west init -l .
+# `.west/` is not committed either. Write its config by hand so the workspace
+# is this repository. Do not use `west init -l .`: it makes the parent folder
+# the workspace, so Zephyr lands outside the repository and the build cannot
+# find it. Only needed once.
+mkdir -p .west
+printf '[manifest]\npath = .\nfile = west.yml\n' > .west/config
 west update
+
+# Zephyr's own Python requirements, and register Zephyr with CMake.
+pip install -r lib/zephyr-workspace/zephyr/scripts/requirements-base.txt
+west zephyr-export
 ```
 
 `west update` also fetches FSW-Zephyr-Board-Lib into
@@ -142,10 +153,27 @@ fprime-util build zephyr --build-cache build-fprime-zephyr-EpsBench
 
 Build output: `build-fprime-zephyr-EpsBench/zephyr/zephyr.uf2`. CI builds every deployment.
 
+### Unit tests
+
+Unit tests build and run on the host, not the board. Generate the test build cache once,
+then run a component's tests from its folder:
+
+```bash
+fprime-util generate --ut
+cd project/Drivers/BatteryHeaters
+fprime-util check
+```
+
+On macOS, `fprime-util check` cannot detect memory leaks; the Linux CI runner can, so a
+test that passes locally can still fail CI. Each tester's destructor must call
+`this->component.deinit()`.
+
 ## Flash
 
 1. Unplug the board, hold **BOOTSEL**, plug it back in, release.
-2. Drag `build-fprime-automatic-zephyr/zephyr/zephyr.uf2` onto the `RP2350` drive that mounts.
+2. Drag `build-fprime-automatic-zephyr/zephyr/zephyr.uf2` onto the `RP2350` drive that mounts,
+   or `cp` it to `/Volumes/RP2350/` on macOS. For a bench, use the `.uf2` from its own build
+   cache, e.g. `build-fprime-zephyr-EpsBench/zephyr/zephyr.uf2`.
 
 The board reboots and runs the deployment automatically.
 
@@ -238,7 +266,7 @@ and run `west update`. Board fixes go to FSW-Zephyr-Board-Lib, not here.
 on, such as I2C.
 
 The Zephyr revision comes from the board lib's own `west.yml`, so this repository does not
-list `zephyr` itself. Zephyr 4.4 changed `uart_irq_update()` from returning `int` to
+list `zephyr` itself. Zephyr 4.4.99 changed `uart_irq_update()` from returning `int` to
 returning `void`, and `patches/0002` adapts the fprime-zephyr UART driver to that signature.
 If the board lib moves to a Zephyr revision that changes this API again, the patch needs
 revisiting.
