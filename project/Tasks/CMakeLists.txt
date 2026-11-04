@@ -4,4 +4,4 @@
 # subsystem's subtopology under project/Subtopologies, not here.
 #
 # Register each task like a driver:
-# add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/EpsManager/")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/EpsManager/")
