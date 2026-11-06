@@ -1,5 +1,4 @@
 #include "project/Drivers/ADM1176/ADM1176.hpp"
-#include "project/Drivers/ADM1176/ADM1176Math.hpp"
 
 namespace project {
 
@@ -28,9 +27,9 @@ bool ADM1176::configure(U32 address, U32 senseResistanceMilliOhms, bool lowVolta
     return true;
 }
 
-void ADM1176::poll_handler(FwIndexType portNum, U32 context) {
+Drv::I2cStatus ADM1176::takeSample(ADM1176Math::Sample& codes, project::PowerSample& sample) {
     if (!this->m_configured) {
-        return;
+        return Drv::I2cStatus::I2C_OPEN_ERR;
     }
 
     U8 bytes[3] = {};
@@ -38,17 +37,35 @@ void ADM1176::poll_handler(FwIndexType portNum, U32 context) {
     const Drv::I2cStatus status = this->i2cRead_out(0, this->m_address, readBuffer);
     if (status != Drv::I2cStatus::I2C_OK) {
         this->log_WARNING_HI_I2cError(1, status);
+        return status;
+    }
+
+    // A good read means the bus is healthy again, so re-arm the error event.
+    this->log_WARNING_HI_I2cError_ThrottleClear();
+
+    codes = ADM1176Math::decode(bytes);
+    sample.set_voltageMv(static_cast<I32>(ADM1176Math::voltageMillivolts(codes.voltageCode, this->m_lowVoltageRange)));
+    sample.set_currentMa(
+        static_cast<I32>(ADM1176Math::currentMilliamps(codes.currentCode, this->m_senseResistanceMilliOhms)));
+    return Drv::I2cStatus::I2C_OK;
+}
+
+Drv::I2cStatus ADM1176::read_handler(FwIndexType portNum, project::PowerSample& sample) {
+    ADM1176Math::Sample codes = {0, 0};
+    return this->takeSample(codes, sample);
+}
+
+void ADM1176::poll_handler(FwIndexType portNum, U32 context) {
+    ADM1176Math::Sample codes = {0, 0};
+    project::PowerSample sample;
+    if (this->takeSample(codes, sample) != Drv::I2cStatus::I2C_OK) {
         return;
     }
 
-    const ADM1176Math::Sample sample = ADM1176Math::decode(bytes);
-    const U32 voltageMv = ADM1176Math::voltageMillivolts(sample.voltageCode, this->m_lowVoltageRange);
-    const U32 currentMa = ADM1176Math::currentMilliamps(sample.currentCode, this->m_senseResistanceMilliOhms);
-
-    this->tlmWrite_VoltageCode(sample.voltageCode);
-    this->tlmWrite_CurrentCode(sample.currentCode);
-    this->tlmWrite_VoltageMv(voltageMv);
-    this->tlmWrite_CurrentMa(currentMa);
+    this->tlmWrite_VoltageCode(codes.voltageCode);
+    this->tlmWrite_CurrentCode(codes.currentCode);
+    this->tlmWrite_VoltageMv(static_cast<U32>(sample.get_voltageMv()));
+    this->tlmWrite_CurrentMa(static_cast<U32>(sample.get_currentMa()));
 }
 
 }  // namespace project
