@@ -281,4 +281,4 @@ void BatteryHeatersTester ::initComponents() {
     this->component.init(BatteryHeatersTester::TEST_INSTANCE_ID);
 }
 
-}  
+}  // namespace project
