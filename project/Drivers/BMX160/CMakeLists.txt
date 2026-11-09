@@ -1,0 +1,19 @@
+register_fprime_library(
+    AUTOCODER_INPUTS
+        "${CMAKE_CURRENT_LIST_DIR}/BMX160.fpp"
+    SOURCES
+        "${CMAKE_CURRENT_LIST_DIR}/BMX160.cpp"
+)
+
+if(BUILD_TESTING)
+    register_fprime_ut(
+        AUTOCODER_INPUTS
+            "${CMAKE_CURRENT_LIST_DIR}/BMX160.fpp"
+        SOURCES
+            "${CMAKE_CURRENT_LIST_DIR}/test/ut/BMX160TestMain.cpp"
+            "${CMAKE_CURRENT_LIST_DIR}/test/ut/BMX160Tester.cpp"
+        DEPENDS
+            STest
+        UT_AUTO_HELPERS
+    )
+endif()
