@@ -6,11 +6,13 @@ module Adcs {
   # Passive component instances
   # ----------------------------------------------------------------------
 
+  # The ADCS sensors and actuators. Passive: their bus transactions run on
+  # whichever thread calls them. The bus each is wired to is set by the
+  # deployment, and its address here, in a configComponents phase.
+
   # OPT4003 light sensors, one per face plus the four angled sensors of the
-  # +Z sun sensor. Passive: their I2C transactions run on whichever thread
-  # calls them. The bus each is wired to is set by the deployment, and its
-  # address here; the pair identifies the sensor, since the same address is
-  # reused on both buses.
+  # +Z sun sensor. The same address is reused on both buses, so the bus and
+  # address together identify a sensor.
 
   @ +X face light sensor, i2c1 0x44
   instance lightSensorXp: project.OPT4003 base id BASE_ID + 0x01000 \
@@ -88,9 +90,9 @@ module Adcs {
   # Subtopology
   # ----------------------------------------------------------------------
 
-  @ Attitude determination and control: its sensors and, once it exists,
-  @ the ADCS task that calls them. Connections to shared buses (Board) and
-  @ to the rate groups (Base) are made by the deployment.
+  @ Attitude determination and control: its sensors and actuators and, once
+  @ it exists, the ADCS task that calls them. Connections to shared buses
+  @ (Board) and to the rate groups (Base) are made by the deployment.
   topology Subtopology {
 
     instance lightSensorXp
