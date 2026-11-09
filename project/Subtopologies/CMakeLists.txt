@@ -8,10 +8,11 @@
 #   00  1-99        Base    command/telemetry plumbing, rate groups, UART link
 #   01  100-199     Board   shared buses (I2C)
 #   02  200-299     Eps
-#   03  300-399     Adcs    (reserved)
+#   03  300-399     Adcs
 #
 # The F Prime subtopologies use 0x01000000 (CdhCore), 0x02000000 (ComCcsds)
 # and 0x05000000 (FileHandling), set in project/config.
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Base/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Board/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Eps/")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Adcs/")

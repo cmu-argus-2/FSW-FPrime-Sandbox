@@ -19,9 +19,11 @@ project/
     Base/          command/telemetry plumbing, rate groups, UART link
     Board/         buses shared between subsystems (I2C)
     Eps/           EPS drivers, and the EPS task once it exists, wired together
+    Adcs/          ADCS sensors, and the ADCS task once it exists
   Deployments/
     Argus/         the flight image: every subsystem
     EpsBench/      Base + Board + Eps only
+    AdcsBench/     Base + Board + Adcs only
 ```
 
 Each layer has one job:

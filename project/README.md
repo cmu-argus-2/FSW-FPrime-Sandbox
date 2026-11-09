@@ -127,14 +127,15 @@ Example: the EPS task.
 
 ## Adding a subsystem or a bench
 
-For example ADCS, which needs `Subtopologies/Adcs/` and `Deployments/AdcsBench/`.
+For example payload, which would need `Subtopologies/Payload/` and
+`Deployments/PayloadBench/`. `Adcs` and `AdcsBench` were made exactly this way.
 
-1. **Subtopology.** Copy the layout of `Subtopologies/Eps/`: `Adcs.fpp` with
-   `module Adcs`, `constant BASE_ID` from slot 03 (`0x10300000`), a
-   `topology Subtopology` block, `SubtopologyTopologyDefs.hpp`, `AdcsPackets.fppi` (ids
-   300-399), and `CMakeLists.txt`. Register it in `Subtopologies/CMakeLists.txt`, and
+1. **Subtopology.** Copy the layout of `Subtopologies/Adcs/`: `Payload.fpp` with
+   `module Payload`, `constant BASE_ID` from the next free slot (04, `0x10400000`), a
+   `topology Subtopology` block, `SubtopologyTopologyDefs.hpp`, `PayloadPackets.fppi` (ids
+   400-499), and `CMakeLists.txt`. Register it in `Subtopologies/CMakeLists.txt`, and
    claim its slot in the table there.
-2. **Bench.** Copy `Deployments/EpsBench/`, and rename every `EpsBench` in file names and
+2. **Bench.** Copy `Deployments/AdcsBench/`, and rename every `AdcsBench` in file names and
    contents (`module`, topology name, header guards, `#include` paths, the packets set
    and its `TlmPackets` alias in `TopologyDefs.hpp`). Import `Base`, `Board` and the new
    subsystem, and include their packets files.
