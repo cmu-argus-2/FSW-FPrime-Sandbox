@@ -16,9 +16,9 @@
 #include "Svc/Subtopologies/CdhCore/SubtopologyTopologyDefs.hpp"
 #include "Svc/Subtopologies/ComCcsds/SubtopologyTopologyDefs.hpp"
 #include "Svc/Subtopologies/FileHandling/SubtopologyTopologyDefs.hpp"
+#include "project/Subtopologies/Adcs/SubtopologyTopologyDefs.hpp"
 #include "project/Subtopologies/Base/SubtopologyTopologyDefs.hpp"
 #include "project/Subtopologies/Board/SubtopologyTopologyDefs.hpp"
-#include "project/Subtopologies/Adcs/SubtopologyTopologyDefs.hpp"
 
 // ComCcsds Enum Includes
 #include "Svc/Subtopologies/ComCcsds/Ports_ComBufferQueueEnumAc.hpp"
