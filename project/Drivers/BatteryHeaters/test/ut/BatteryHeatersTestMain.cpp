@@ -40,6 +40,20 @@ TEST(DualHeater, DisableHeater1DropsMasterWhenHeater0Off) {
 }
 
 // ---------------------------------------------------------------------
+// Dual-heater board, EPS task ports
+// ---------------------------------------------------------------------
+
+TEST(DualHeater, SetHeater0OnDrivesMasterAndHeater0) {
+    project::BatteryHeatersTester tester(true);
+    tester.testSetHeater0OnDrivesMasterAndHeater0();
+}
+
+TEST(DualHeater, SetHeater0OffKeepsMasterWhileHeater1On) {
+    project::BatteryHeatersTester tester(true);
+    tester.testSetHeater0OffKeepsMasterWhileHeater1On();
+}
+
+// ---------------------------------------------------------------------
 // Single-heater board (heater 1 ports left unconnected)
 // ---------------------------------------------------------------------
 
@@ -56,6 +70,11 @@ TEST(SingleHeater, DisableHeater1Rejected) {
 TEST(SingleHeater, DisableHeater0DropsMaster) {
     project::BatteryHeatersTester tester(false);
     tester.testDisableHeater0DropsMasterWhenHeater1NotPresent();
+}
+
+TEST(SingleHeater, SetHeater1Rejected) {
+    project::BatteryHeatersTester tester(false);
+    tester.testSetHeater1RejectedWhenNotPresent();
 }
 
 int main(int argc, char** argv) {

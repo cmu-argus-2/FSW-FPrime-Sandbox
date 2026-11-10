@@ -36,14 +36,23 @@ module EpsBench {
   # Direct graph specifiers
   # ----------------------------------------------------------------------
 
-    connections Bench {
-      # Until the EPS task exists, a driver under test can be driven
-      # straight from a rate group here, starting at the first free member
-      # port (Base uses 1Hz 0-5, 0.5Hz 0, 0.25Hz 0-1), e.g.
-      #   Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Eps.fuelGauge.run
-      # and connected to its bus, e.g.
-      #   Eps.fuelGauge.busWriteRead -> Board.i2c1.writeRead
-      # The EPS task PR replaces the rate group lines with the task.
+    connections EpsWiring {
+      # EPS task on the 1 Hz rate group (Base uses members 0-5)
+      Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Eps.epsManager.run
+
+      # Power monitors on I2C1
+      Eps.pmMainboard.i2cWrite -> Board.i2c1.write
+      Eps.pmMainboard.i2cRead  -> Board.i2c1.read
+      Eps.pmGps.i2cWrite       -> Board.i2c1.write
+      Eps.pmGps.i2cRead        -> Board.i2c1.read
+      Eps.pmRadio.i2cWrite     -> Board.i2c1.write
+      Eps.pmRadio.i2cRead      -> Board.i2c1.read
+      Eps.pmJetson.i2cWrite    -> Board.i2c1.write
+      Eps.pmJetson.i2cRead     -> Board.i2c1.read
+
+      # Fuel gauge on I2C1
+      Eps.fuelGauge.busWriteRead -> Board.i2c1.writeRead
+      Eps.fuelGauge.busWrite     -> Board.i2c1.write
     }
 
   }
