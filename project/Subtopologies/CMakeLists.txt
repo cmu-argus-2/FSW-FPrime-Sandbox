@@ -9,6 +9,7 @@
 #   01  100-199     Board   shared buses (I2C)
 #   02  200-299     Eps
 #   03  300-399     Adcs
+#   0F  1500-1599   BenchTools  bench and bring-up tools; benches only, never Argus
 #
 # The F Prime subtopologies use 0x01000000 (CdhCore), 0x02000000 (ComCcsds)
 # and 0x05000000 (FileHandling), set in project/config.
@@ -16,3 +17,4 @@ add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Base/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Board/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Eps/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Adcs/")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/BenchTools/")

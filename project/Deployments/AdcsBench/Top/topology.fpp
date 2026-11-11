@@ -12,6 +12,7 @@ module AdcsBench {
     import Base.Subtopology
     import Board.Subtopology
     import Adcs.Subtopology
+    import BenchTools.Subtopology
 
   # ----------------------------------------------------------------------
   # Pattern graph specifiers
@@ -35,6 +36,12 @@ module AdcsBench {
   # ----------------------------------------------------------------------
   # Direct graph specifiers
   # ----------------------------------------------------------------------
+
+    connections BenchTools {
+      # I2C bus scanner: one read port per bus (see project/Tools/I2cScanner).
+      BenchTools.i2cScanner.bus0Read -> Board.i2c0.read
+      BenchTools.i2cScanner.bus1Read -> Board.i2c1.read
+    }
 
     connections Bench {
       # Until the ADCS task exists, a driver under test can be driven

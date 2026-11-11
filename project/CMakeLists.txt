@@ -5,6 +5,7 @@
 #   config/         F Prime configuration overrides for the RP2350
 #   Drivers/        one passive component per chip
 #   Tasks/          one active component per flight task
+#   Tools/          bench and bring-up tools, never in the flight image
 #   Subtopologies/  instances and wiring, one per subsystem plus Base and Board
 #   Deployments/    flight image (Argus) and per-subsystem benches
 
@@ -13,6 +14,7 @@
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/config")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Drivers")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Tasks")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/Tools")
 
 # fprime-zephyr allows one deployment per build cache: a second call to
 # register_fprime_zephyr_deployment asserts. Pick it at generate time, in its

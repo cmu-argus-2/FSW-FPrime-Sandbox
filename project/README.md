@@ -9,9 +9,11 @@ flashing and running the GDS, see the [top-level README](../README.md).
 | --- | --- | --- |
 | `Drivers/` | One **passive** component per chip. It talks to the chip through `Drv` ports (I2C, GPIO) and has no idea which bus or pin it is on, or who calls it. | `Drivers/MAX17205/` |
 | `Tasks/` | One **active** component per flight task. It owns a thread (like a Python `TemplateTask`) and calls its subsystem's drivers through ports. | `Tasks/EpsManager/` |
+| `Tools/` | Bench and bring-up tools: components for testing hardware and other components on the flatsat. Never part of the flight image. | `Tools/I2cScanner/` |
 | `Subtopologies/<Subsystem>/` | The **instances** of a subsystem's drivers and task, the connections between them, and their configuration (I2C address, GPIO pin). Also the subsystem's telemetry packets. | `Subtopologies/Eps/` |
 | `Subtopologies/Base/` | Command and telemetry plumbing, rate groups and the UART ground link. Every deployment imports it. | |
 | `Subtopologies/Board/` | Hardware that more than one subsystem uses: the I2C buses. | `Board.i2c1` |
+| `Subtopologies/BenchTools/` | Instances of the `Tools/` components. Only the bench deployments import it. | `BenchTools.i2cScanner` |
 | `Deployments/Argus/` | The flight image. It imports every finished subsystem. | |
 | `Deployments/<Subsystem>Bench/` | One subsystem alone, for bringing drivers up on the flatsat and measuring that subsystem in isolation. | `Deployments/EpsBench/` |
 | `config/` | F´ configuration overrides that make it fit the RP2350. | |

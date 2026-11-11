@@ -15,15 +15,17 @@ project/
   config/          F´ configuration overrides for the RP2350
   Drivers/         one passive component per chip
   Tasks/           one active component per flight task (EPS, ADCS, ...)
+  Tools/           bench and bring-up tools (I2cScanner), never in the flight image
   Subtopologies/
     Base/          command/telemetry plumbing, rate groups, UART link
     Board/         buses shared between subsystems (I2C)
     Eps/           EPS drivers, and the EPS task once it exists, wired together
     Adcs/          ADCS sensors, and the ADCS task once it exists
+    BenchTools/    instances of Tools/, imported by the benches only
   Deployments/
     Argus/         the flight image: every subsystem
-    EpsBench/      Base + Board + Eps only
-    AdcsBench/     Base + Board + Adcs only
+    EpsBench/      Base + Board + Eps (+ BenchTools)
+    AdcsBench/     Base + Board + Adcs (+ BenchTools)
 ```
 
 Each layer has one job:

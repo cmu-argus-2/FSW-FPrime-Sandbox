@@ -17,6 +17,7 @@
 #include "Svc/Subtopologies/ComCcsds/SubtopologyTopologyDefs.hpp"
 #include "Svc/Subtopologies/FileHandling/SubtopologyTopologyDefs.hpp"
 #include "project/Subtopologies/Base/SubtopologyTopologyDefs.hpp"
+#include "project/Subtopologies/BenchTools/SubtopologyTopologyDefs.hpp"
 #include "project/Subtopologies/Board/SubtopologyTopologyDefs.hpp"
 #include "project/Subtopologies/Eps/SubtopologyTopologyDefs.hpp"
 
