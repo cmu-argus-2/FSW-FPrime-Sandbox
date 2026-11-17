@@ -33,12 +33,20 @@ class BatteryHeatersTester final : public BatteryHeatersGTestBase {
     void testDisableHeater1DropsMasterWhenHeater0Off();
 
     // ----------------------------------------------------------------
+    // Tests: dual-heater board, EPS task ports
+    // ----------------------------------------------------------------
+
+    void testSetHeater0OnDrivesMasterAndHeater0();
+    void testSetHeater0OffKeepsMasterWhileHeater1On();
+
+    // ----------------------------------------------------------------
     // Tests: single-heater board (heater 1 unconnected)
     // ----------------------------------------------------------------
 
     void testEnableHeater1RejectedWhenNotPresent();
     void testDisableHeater1RejectedWhenNotPresent();
     void testDisableHeater0DropsMasterWhenHeater1NotPresent();
+    void testSetHeater1RejectedWhenNotPresent();
 
   private:
     // ----------------------------------------------------------------

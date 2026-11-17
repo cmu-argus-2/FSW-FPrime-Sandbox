@@ -30,6 +30,29 @@ module Argus {
 
     include "ArgusPackets.fppi"
 
+  # ----------------------------------------------------------------------
+  # Direct graph specifiers
+  # ----------------------------------------------------------------------
+
+    connections EpsWiring {
+      # EPS task on the 1 Hz rate group (Base uses members 0-5)
+      Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Eps.epsManager.run
+
+      # Power monitors on I2C1
+      Eps.pmMainboard.i2cWrite -> Board.i2c1.write
+      Eps.pmMainboard.i2cRead  -> Board.i2c1.read
+      Eps.pmGps.i2cWrite       -> Board.i2c1.write
+      Eps.pmGps.i2cRead        -> Board.i2c1.read
+      Eps.pmRadio.i2cWrite     -> Board.i2c1.write
+      Eps.pmRadio.i2cRead      -> Board.i2c1.read
+      Eps.pmJetson.i2cWrite    -> Board.i2c1.write
+      Eps.pmJetson.i2cRead     -> Board.i2c1.read
+
+      # Fuel gauge on I2C1
+      Eps.fuelGauge.busWriteRead -> Board.i2c1.writeRead
+      Eps.fuelGauge.busWrite     -> Board.i2c1.write
+    }
+
   }
 
 }

@@ -24,8 +24,3 @@ TEST(ADM1176Math, CurrentScalesBySenseResistor) {
     EXPECT_EQ(currentMilliamps(4095, 20), 5290U);
     EXPECT_EQ(currentMilliamps(4095, 0), 0U);
 }
-
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}

@@ -1,26 +1,53 @@
 module project {
 
+  @ Which heater a port call targets
+  enum HeaterId : U8 {
+    HEATER0 = 0
+    HEATER1 = 1
+  }
+
+  @ Turn one heater on or off. Returns false if that heater is not present
+  @ on this board (heater 1 ports left unconnected).
+  port HeaterSet(heater: HeaterId, enable: bool) -> bool
+
+  @ Last commanded state of one heater. False if not present.
+  port HeaterGet(heater: HeaterId) -> bool
+
   @ Enable/disable control for spacecraft battery heaters.
   @ Supports one or two heater channels sharing a common master enable line.
   @ Leave the heater1Write/heater1Read ports unconnected in the topology
   @ for single-heater board configurations.
+  @
+  @ Every entry point is guarded: ground commands arrive on the command
+  @ dispatcher's thread and EPS calls arrive on the EPS task's thread, and
+  @ both read and write the same shadow state.
   passive component BatteryHeaters {
 
     # ----------------------------------------------------------------------
-    # Commands
+    # Commands (ground and bench control)
     # ----------------------------------------------------------------------
 
     @ Enable heater 0
-    sync command EnableHeater0 opcode 0
+    guarded command EnableHeater0 opcode 0
 
     @ Enable heater 1 (rejected if heater 1 is not connected on this board)
-    sync command EnableHeater1 opcode 1
+    guarded command EnableHeater1 opcode 1
 
     @ Disable heater 0
-    sync command DisableHeater0 opcode 2
+    guarded command DisableHeater0 opcode 2
 
     @ Disable heater 1 (rejected if heater 1 is not connected on this board)
-    sync command DisableHeater1 opcode 3
+    guarded command DisableHeater1 opcode 3
+
+    # ----------------------------------------------------------------------
+    # EPS task ports
+    # ----------------------------------------------------------------------
+
+    @ EPS task control: turn a heater on or off
+    guarded input port setHeater: project.HeaterSet
+
+    @ EPS task control: read a heater's state
+    guarded input port getHeater: project.HeaterGet
 
     # ----------------------------------------------------------------------
     # GPIO ports
