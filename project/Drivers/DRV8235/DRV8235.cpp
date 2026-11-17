@@ -118,17 +118,16 @@ void DRV8235::poll_handler(FwIndexType portNum, U32 context) {
         return;
     }
 
-    this->tlmWrite_VoltageCode(codes.voltage);
-    this->tlmWrite_CurrentCode(codes.current);
-    this->tlmWrite_VoltageMv(sample.get_voltageMv());
-    this->tlmWrite_CurrentMa(sample.get_currentMa());
-
     U8 faults = 0;
-    if (this->readRegister(DRV8235Math::FAULT_STATUS, faults) == Drv::I2cStatus::I2C_OK) {
-        this->tlmWrite_FaultStatus(faults);
-        if ((faults & DRV8235Math::FAULT_ANY) != 0) {
-            this->log_WARNING_HI_DeviceFault(faults);
-        }
+    if (this->readRegister(DRV8235Math::FAULT_STATUS, faults) != Drv::I2cStatus::I2C_OK) {
+        this->m_initialized = false;
+        return;
+    }
+
+    this->tlmWrite_Reading(
+        project::DRV8235Reading(codes.voltage, codes.current, sample.get_voltageMv(), sample.get_currentMa(), faults));
+    if ((faults & DRV8235Math::FAULT_ANY) != 0) {
+        this->log_WARNING_HI_DeviceFault(faults);
     }
 }
 

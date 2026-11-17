@@ -185,12 +185,13 @@ void DRV8235Tester ::testPollPublishesTelemetryAndFault() {
 
     this->invoke_to_poll(0, 0);
 
-    ASSERT_TLM_VoltageCode_SIZE(1);
-    ASSERT_TLM_VoltageCode(0, kVoltageCode);
-    ASSERT_TLM_CurrentCode(0, kCurrentCode);
-    ASSERT_TLM_VoltageMv(0, kExpectedMv);
-    ASSERT_TLM_CurrentMa(0, kExpectedMa);
-    ASSERT_TLM_FaultStatus(0, FAULT_ANY | FAULT_OCP);
+    ASSERT_TLM_Reading_SIZE(1);
+    const project::DRV8235Reading reading = this->tlmHistory_Reading->at(0).arg;
+    ASSERT_EQ(reading.get_voltageCode(), kVoltageCode);
+    ASSERT_EQ(reading.get_currentCode(), kCurrentCode);
+    ASSERT_EQ(reading.get_voltageMv(), kExpectedMv);
+    ASSERT_EQ(reading.get_currentMa(), kExpectedMa);
+    ASSERT_EQ(reading.get_faultStatus(), FAULT_ANY | FAULT_OCP);
     ASSERT_EVENTS_DeviceFault_SIZE(1);
     ASSERT_EVENTS_DeviceFault(0, FAULT_ANY | FAULT_OCP);
 
@@ -204,7 +205,8 @@ void DRV8235Tester ::testPollWithoutFaultEmitsNoFaultEvent() {
 
     this->invoke_to_poll(0, 0);
 
-    ASSERT_TLM_FaultStatus(0, 0);
+    ASSERT_TLM_Reading_SIZE(1);
+    ASSERT_EQ(this->tlmHistory_Reading->at(0).arg.get_faultStatus(), 0);
     ASSERT_EVENTS_SIZE(0);
 }
 

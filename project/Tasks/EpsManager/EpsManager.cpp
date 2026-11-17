@@ -56,8 +56,10 @@ EpsManager ::~EpsManager() {}
 // ----------------------------------------------------------------------
 
 void EpsManager ::run_handler(FwIndexType portNum, U32 context) {
-    // Every run: power monitors and alerts
+    // Every run: power monitors, torque coils and alerts (tasks/eps.py reads
+    // both every cycle, monitors first)
     this->readPowerMonitors();
+    this->readCoils();
     this->publishAlerts();
 
     // tasks/eps.py checks log_counter % 5 before incrementing it, so the very
@@ -108,6 +110,45 @@ void EpsManager ::readPowerMonitors() {
 
         // Monitor port i is load i in EpsLoad
         this->updateAlert(i, sample.get_voltageMv(), sample.get_currentMa(), MONITOR_THRESHOLD_MW[i]);
+    }
+}
+
+void EpsManager ::readCoils() {
+    for (FwIndexType i = 0; i < NUM_COILS; i++) {
+        // Same rule as the monitors: an absent or failing coil driver
+        // reports 0 and raises no alert.
+        project::PowerSample sample;
+        if (this->isConnected_coilMonitors_OutputPort(i)) {
+            (void)this->coilMonitors_out(i, sample);
+        }
+
+        const project::EpsVi vi(sample.get_voltageMv(), sample.get_currentMa());
+        switch (i) {
+            case 0:
+                m_data.set_coilXp(vi);
+                break;
+            case 1:
+                m_data.set_coilXm(vi);
+                break;
+            case 2:
+                m_data.set_coilYp(vi);
+                break;
+            case 3:
+                m_data.set_coilYm(vi);
+                break;
+            case 4:
+                m_data.set_coilZp(vi);
+                break;
+            default:
+                m_data.set_coilZm(vi);
+                break;
+        }
+
+        // Coil port i is load COIL_XP + i in EpsLoad. In reverse both values
+        // are negative, so the power, like Python's, is still positive.
+        const FwIndexType load = static_cast<FwIndexType>(project::EpsLoad::COIL_XP + i);
+        this->updateAlert(load, sample.get_voltageMv(), sample.get_currentMa(),
+                          EpsLogic::PowerThresholdMw::TORQUE_COIL);
     }
 }
 

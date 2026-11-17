@@ -1,5 +1,15 @@
 module project {
 
+    @ One bench sample from a DRV8235. Published as a single channel so six
+    @ coils take six of the telemetry packetizer's channel slots, not thirty.
+    struct DRV8235Reading {
+        voltageCode: U8 @< VMTR register
+        currentCode: U8 @< IMTR register
+        voltageMv: I32 @< Coil voltage in mV, negative in reverse
+        currentMa: I32 @< Coil current in mA, negative in reverse
+        faultStatus: U8 @< FAULT_STATUS register
+    }
+
     @ DRV8235 H-bridge driver for one magnetorquer coil.
     @
     @ The chip is unpowered until COIL_EN is high, so configure() only stores
@@ -25,13 +35,8 @@ module project {
 
         time get port timeCaller
 
-        telemetry VoltageCode: U8 update always
-        telemetry CurrentCode: U8 update always
-        telemetry VoltageMv: I32 update always
-        telemetry CurrentMa: I32 update always
-
-        @ Raw FAULT_STATUS register (bench poll only)
-        telemetry FaultStatus: U8
+        @ Bench poll only: raw registers, decoded values and fault flags
+        telemetry Reading: DRV8235Reading update always
 
         event ConfigurationError(address: U32) \
             severity warning high format "Invalid DRV8235 config: addr={}"

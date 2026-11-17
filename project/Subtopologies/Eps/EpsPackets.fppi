@@ -56,3 +56,15 @@
     Eps.pmJetson.VoltageMv
     Eps.pmJetson.CurrentMa
   }
+
+  # Written only by DRV8235's poll port (bench bring-up), like
+  # PowerMonitorsBench. In flight EPS calls read, and the coil values reach
+  # the ground in EpsData instead.
+  packet CoilsBench id 206 group 2 {
+    Eps.coilXp.Reading
+    Eps.coilXm.Reading
+    Eps.coilYp.Reading
+    Eps.coilYm.Reading
+    Eps.coilZp.Reading
+    Eps.coilZm.Reading
+  }

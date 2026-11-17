@@ -23,6 +23,10 @@ EpsManagerTester ::EpsManagerTester()
         m_monitor[i] = project::PowerSample(0, 0);
         m_monitorStatus[i] = Drv::I2cStatus::I2C_OK;
     }
+    for (FwIndexType i = 0; i < EpsManager::NUM_COILS; i++) {
+        m_coil[i] = project::PowerSample(0, 0);
+        m_coilStatus[i] = Drv::I2cStatus::I2C_OK;
+    }
     // A healthy pack by default: 80% SOC, thermistors at 20 C, so no
     // heater or power flag action happens unless a test asks for it
     m_battery.set_stateOfCharge(80.0F);
@@ -120,6 +124,61 @@ void EpsManagerTester ::testMonitorValuesPublishedEveryFifthRun() {
     ASSERT_TLM_Data_SIZE(2);
     ASSERT_EQ(this->lastData().get_gps().get_voltageMv(), 5000);
     ASSERT_EQ(this->lastData().get_gps().get_currentMa(), 100);
+}
+
+void EpsManagerTester ::testCoilsReadEveryRun() {
+    this->runOnce();
+    ASSERT_from_coilMonitors_SIZE(6);
+
+    // Unlike the fuel gauge, every run, not every fifth
+    this->runOnce();
+    ASSERT_from_coilMonitors_SIZE(12);
+}
+
+void EpsManagerTester ::testCoilValuesInData() {
+    m_coil[0] = project::PowerSample(4015, 928);    // XP, forward
+    m_coil[5] = project::PowerSample(-4015, -928);  // ZM, reverse
+    this->runOnce();
+
+    const project::EpsData data = this->lastData();
+    ASSERT_EQ(data.get_coilXp().get_voltageMv(), 4015);
+    ASSERT_EQ(data.get_coilXp().get_currentMa(), 928);
+    ASSERT_EQ(data.get_coilZm().get_voltageMv(), -4015);
+    ASSERT_EQ(data.get_coilZm().get_currentMa(), -928);
+    ASSERT_EQ(data.get_coilYp().get_voltageMv(), 0);
+}
+
+void EpsManagerTester ::testCoilAlertAtThresholdInEitherDirection() {
+    // YP forward and ZM reverse, both at exactly the 1500 mW coil threshold
+    m_coil[2] = project::PowerSample(5000, 300);
+    m_coil[5] = project::PowerSample(-5000, -300);
+    this->runOnce();
+
+    ASSERT_EQ(this->tlmHistory_Alerts->at(0).arg.get_coilYp(), 1);
+    ASSERT_EQ(this->tlmHistory_Alerts->at(0).arg.get_coilZm(), 1);
+    ASSERT_EQ(this->tlmHistory_Alerts->at(0).arg.get_coilXp(), 0);
+    ASSERT_EVENTS_PowerAlertRaised_SIZE(2);
+    ASSERT_TRUE(this->eventHistory_PowerAlertRaised->at(0).load == project::EpsLoad::COIL_YP);
+    ASSERT_EQ(this->eventHistory_PowerAlertRaised->at(0).thresholdMw, 1500);
+    ASSERT_TRUE(this->eventHistory_PowerAlertRaised->at(1).load == project::EpsLoad::COIL_ZM);
+
+    // Just below on YP: cleared
+    m_coil[2] = project::PowerSample(5000, 299);
+    this->runOnce();
+    ASSERT_EQ(this->tlmHistory_Alerts->at(1).arg.get_coilYp(), 0);
+    ASSERT_EVENTS_PowerAlertCleared_SIZE(1);
+}
+
+void EpsManagerTester ::testFailedCoilReadsAsZero() {
+    // 2 W would alert XM, but the read fails
+    m_coil[1] = project::PowerSample(5000, 400);
+    m_coilStatus[1] = Drv::I2cStatus::I2C_ADDRESS_ERR;
+    this->runOnce();
+
+    ASSERT_EQ(this->tlmHistory_Alerts->at(0).arg.get_coilXm(), 0);
+    ASSERT_EVENTS_PowerAlertRaised_SIZE(0);
+    ASSERT_EQ(this->lastData().get_coilXm().get_voltageMv(), 0);
+    ASSERT_EQ(this->lastData().get_coilXm().get_currentMa(), 0);
 }
 
 // ----------------------------------------------------------------------
@@ -258,6 +317,14 @@ Drv::I2cStatus EpsManagerTester ::from_powerMonitors_handler(FwIndexType portNum
     return m_monitorStatus[portNum];
 }
 
+Drv::I2cStatus EpsManagerTester ::from_coilMonitors_handler(FwIndexType portNum, project::PowerSample& sample) {
+    this->pushFromPortEntry_coilMonitors(sample);
+    if (m_coilStatus[portNum] == Drv::I2cStatus::I2C_OK) {
+        sample = m_coil[portNum];
+    }
+    return m_coilStatus[portNum];
+}
+
 U32 EpsManagerTester ::from_fuelGauge_handler(FwIndexType portNum, project::BatteryState& sample) {
     this->pushFromPortEntry_fuelGauge(sample);
     if (m_fuelFailures == 0) {
@@ -334,6 +401,9 @@ void EpsManagerTester ::connectPorts() {
     // Component -> tester (drivers)
     for (FwIndexType i = 0; i < EpsManager::NUM_POWER_MONITORS; i++) {
         this->component.set_powerMonitors_OutputPort(i, this->get_from_powerMonitors(i));
+    }
+    for (FwIndexType i = 0; i < EpsManager::NUM_COILS; i++) {
+        this->component.set_coilMonitors_OutputPort(i, this->get_from_coilMonitors(i));
     }
     this->component.set_fuelGauge_OutputPort(0, this->get_from_fuelGauge(0));
     this->component.set_heaterSet_OutputPort(0, this->get_from_heaterSet(0));

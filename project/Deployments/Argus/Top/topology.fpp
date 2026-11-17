@@ -51,6 +51,20 @@ module Argus {
       # Fuel gauge on I2C1
       Eps.fuelGauge.busWriteRead -> Board.i2c1.writeRead
       Eps.fuelGauge.busWrite     -> Board.i2c1.write
+
+      # Torque coil drivers: plus faces on I2C1, minus faces on I2C0
+      Eps.coilXp.busWriteRead -> Board.i2c1.writeRead
+      Eps.coilXp.busWrite     -> Board.i2c1.write
+      Eps.coilYp.busWriteRead -> Board.i2c1.writeRead
+      Eps.coilYp.busWrite     -> Board.i2c1.write
+      Eps.coilZp.busWriteRead -> Board.i2c1.writeRead
+      Eps.coilZp.busWrite     -> Board.i2c1.write
+      Eps.coilXm.busWriteRead -> Board.i2c0.writeRead
+      Eps.coilXm.busWrite     -> Board.i2c0.write
+      Eps.coilYm.busWriteRead -> Board.i2c0.writeRead
+      Eps.coilYm.busWrite     -> Board.i2c0.write
+      Eps.coilZm.busWriteRead -> Board.i2c0.writeRead
+      Eps.coilZm.busWrite     -> Board.i2c0.write
     }
 
   }

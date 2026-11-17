@@ -19,8 +19,12 @@ class EpsManager final : public EpsManagerComponentBase {
     //! Power monitor ports: mainboard, GPS (peripheral), radio, Jetson
     static constexpr FwIndexType NUM_POWER_MONITORS = 4;
 
+    //! Torque coil ports: XP, XM, YP, YM, ZP, ZM
+    static constexpr FwIndexType NUM_COILS = 6;
+
     //! Loads with power alerts (EpsLoad): 4 monitors and 6 torque coils
     static constexpr FwIndexType NUM_LOADS = 10;
+    static_assert(NUM_POWER_MONITORS + NUM_COILS == NUM_LOADS, "every load is a monitor or a coil");
 
     explicit EpsManager(const char* const compName);
     ~EpsManager() override;
@@ -39,6 +43,9 @@ class EpsManager final : public EpsManagerComponentBase {
 
     //! Read the power monitors, store their values, update their alerts
     void readPowerMonitors();
+
+    //! Read the torque coil drivers, store their values, update their alerts
+    void readCoils();
 
     //! Recompute one load's alert and emit an event when it changes
     void updateAlert(FwIndexType load, I32 millivolts, I32 milliamps, I64 thresholdMw);

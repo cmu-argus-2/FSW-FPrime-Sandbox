@@ -13,7 +13,8 @@ namespace project {
 
 class EpsManagerTester final : public EpsManagerGTestBase {
   public:
-    static const FwSizeType MAX_HISTORY_SIZE = 50;
+    // Each run reads 6 coils, and the longest test runs 11 times
+    static const FwSizeType MAX_HISTORY_SIZE = 100;
     static const FwSizeType QUEUE_DEPTH = 10;
     static const FwEnumStoreType TEST_INSTANCE_ID = 0;
 
@@ -35,6 +36,10 @@ class EpsManagerTester final : public EpsManagerGTestBase {
     void testAlertRaisedOnceAndCleared();
     void testFailedMonitorReadsAsZero();
     void testMonitorValuesPublishedEveryFifthRun();
+    void testCoilsReadEveryRun();
+    void testCoilValuesInData();
+    void testCoilAlertAtThresholdInEitherDirection();
+    void testFailedCoilReadsAsZero();
 
     // ----------------------------------------------------------------
     // Tests: fuel gauge cycle
@@ -56,6 +61,7 @@ class EpsManagerTester final : public EpsManagerGTestBase {
     // ----------------------------------------------------------------
 
     Drv::I2cStatus from_powerMonitors_handler(FwIndexType portNum, project::PowerSample& sample) override;
+    Drv::I2cStatus from_coilMonitors_handler(FwIndexType portNum, project::PowerSample& sample) override;
     U32 from_fuelGauge_handler(FwIndexType portNum, project::BatteryState& sample) override;
     bool from_heaterSet_handler(FwIndexType portNum, const project::HeaterId& heater, bool enable) override;
     bool from_heaterGet_handler(FwIndexType portNum, const project::HeaterId& heater) override;
@@ -85,6 +91,8 @@ class EpsManagerTester final : public EpsManagerGTestBase {
     // What the mocked drivers report
     project::PowerSample m_monitor[EpsManager::NUM_POWER_MONITORS];
     Drv::I2cStatus m_monitorStatus[EpsManager::NUM_POWER_MONITORS];
+    project::PowerSample m_coil[EpsManager::NUM_COILS];
+    Drv::I2cStatus m_coilStatus[EpsManager::NUM_COILS];
     project::BatteryState m_battery;
     U32 m_fuelFailures;
     bool m_heaterOn[2];
