@@ -5,6 +5,31 @@
 
 #include "project/Tasks/EpsManager/EpsManager.hpp"
 
+#ifdef __ZEPHYR__
+#include <zephyr/kernel.h>
+#include <zephyr/sys/mem_stats.h>
+// Defined in Zephyr's common libc (lib/libc/common/source/stdlib/malloc.c),
+// declared in a header that is not on the application include path.
+extern "C" int malloc_runtime_stats_get(struct sys_memory_stats* stats);
+
+namespace {
+// Smallest unused stack among the F Prime task threads. Only stacks of the
+// task size are counted, so the tiny idle and ISR stacks don't dominate.
+void minTaskStackCallback(const struct k_thread* thread, void* userData) {
+    if (thread->stack_info.size != CONFIG_DYNAMIC_THREAD_STACK_SIZE) {
+        return;
+    }
+    size_t unused = 0;
+    if (k_thread_stack_space_get(thread, &unused) == 0) {
+        size_t* minUnused = static_cast<size_t*>(userData);
+        if (unused < *minUnused) {
+            *minUnused = unused;
+        }
+    }
+}
+}  // namespace
+#endif
+
 namespace project {
 
 namespace {
@@ -193,6 +218,7 @@ void EpsManager ::fuelGaugeCycle() {
     m_data.set_heater0(this->heaterState(project::HeaterId::HEATER0));
     m_data.set_heater1(this->heaterState(project::HeaterId::HEATER1));
     this->tlmWrite_Data(m_data);
+    this->publishMemoryStats();
 }
 
 void EpsManager ::storeFuelGauge(const project::BatteryState& state) {
@@ -259,6 +285,32 @@ U8 EpsManager ::heaterState(const project::HeaterId& heater) {
         return 0;
     }
     return asFlag(this->heaterGet_out(0, heater));
+}
+
+void EpsManager ::publishMemoryStats() {
+#ifdef __ZEPHYR__
+#if defined(CONFIG_SYS_HEAP_RUNTIME_STATS)
+    struct sys_memory_stats heap;
+    if (malloc_runtime_stats_get(&heap) == 0) {
+        this->tlmWrite_HeapAllocatedBytes(static_cast<U32>(heap.allocated_bytes));
+        this->tlmWrite_HeapFreeBytes(static_cast<U32>(heap.free_bytes));
+        this->tlmWrite_HeapPeakBytes(static_cast<U32>(heap.max_allocated_bytes));
+    }
+#endif
+#if defined(CONFIG_INIT_STACKS) && defined(CONFIG_THREAD_STACK_INFO)
+    size_t unused = 0;
+    if (k_thread_stack_space_get(k_current_get(), &unused) == 0) {
+        this->tlmWrite_EpsStackUnusedBytes(static_cast<U32>(unused));
+    }
+#if defined(CONFIG_THREAD_MONITOR)
+    size_t minUnused = SIZE_MAX;
+    k_thread_foreach_unlocked(minTaskStackCallback, &minUnused);
+    if (minUnused != SIZE_MAX) {
+        this->tlmWrite_MinTaskStackUnusedBytes(static_cast<U32>(minUnused));
+    }
+#endif
+#endif
+#endif
 }
 
 }  // namespace project
