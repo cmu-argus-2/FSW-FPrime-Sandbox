@@ -46,6 +46,8 @@ class EpsManager final : public EpsManagerComponentBase {
     //! Publish the Alerts channel
     void publishAlerts();
 
+    void publishMemoryStats();
+
     // ----------------------------------------------------------------
     // Every FUEL_GAUGE_PERIOD runs
     // ----------------------------------------------------------------

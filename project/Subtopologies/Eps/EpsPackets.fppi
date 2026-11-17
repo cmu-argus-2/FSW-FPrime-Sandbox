@@ -56,3 +56,11 @@
     Eps.pmJetson.VoltageMv
     Eps.pmJetson.CurrentMa
   }
+
+  packet EpsMemory id 205 group 2 {
+    Eps.epsManager.HeapAllocatedBytes
+    Eps.epsManager.HeapFreeBytes
+    Eps.epsManager.HeapPeakBytes
+    Eps.epsManager.EpsStackUnusedBytes
+    Eps.epsManager.MinTaskStackUnusedBytes
+  }

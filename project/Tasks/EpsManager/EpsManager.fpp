@@ -150,6 +150,21 @@ module project {
         @ Full EPS record, published every fuel gauge cycle
         telemetry Data: EpsData
 
+        @ Bench: malloc heap bytes in use
+        telemetry HeapAllocatedBytes: U32
+
+        @ Bench: malloc heap bytes still free (remaining RAM headroom)
+        telemetry HeapFreeBytes: U32
+
+        @ Bench: most heap bytes ever in use since boot
+        telemetry HeapPeakBytes: U32
+
+        @ Bench: EPS thread stack never touched since boot, bytes
+        telemetry EpsStackUnusedBytes: U32
+
+        @ Bench: smallest never-touched stack among the 8 KiB task threads
+        telemetry MinTaskStackUnusedBytes: U32
+
         # ----------------------------------------------------------------------
         # Events
         # ----------------------------------------------------------------------
