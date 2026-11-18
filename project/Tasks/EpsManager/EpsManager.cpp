@@ -27,6 +27,14 @@ void minTaskStackCallback(const struct k_thread* thread, void* userData) {
         }
     }
 }
+
+// Adds a thread's deepest stack use since boot to the running total.
+void stackPeakSumCallback(const struct k_thread* thread, void* userData) {
+    size_t unused = 0;
+    if (k_thread_stack_space_get(thread, &unused) == 0) {
+        *static_cast<size_t*>(userData) += thread->stack_info.size - unused;
+    }
+}
 }  // namespace
 #endif
 
@@ -308,6 +316,9 @@ void EpsManager ::publishMemoryStats() {
     if (minUnused != SIZE_MAX) {
         this->tlmWrite_MinTaskStackUnusedBytes(static_cast<U32>(minUnused));
     }
+    size_t peakSum = 0;
+    k_thread_foreach_unlocked(stackPeakSumCallback, &peakSum);
+    this->tlmWrite_AllStacksPeakBytes(static_cast<U32>(peakSum));
 #endif
 #endif
 #endif

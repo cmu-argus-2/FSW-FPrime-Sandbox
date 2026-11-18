@@ -63,4 +63,5 @@
     Eps.epsManager.HeapPeakBytes
     Eps.epsManager.EpsStackUnusedBytes
     Eps.epsManager.MinTaskStackUnusedBytes
+    Eps.epsManager.AllStacksPeakBytes
   }

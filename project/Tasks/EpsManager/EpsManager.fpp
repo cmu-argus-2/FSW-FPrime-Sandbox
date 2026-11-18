@@ -165,6 +165,11 @@ module project {
         @ Bench: smallest never-touched stack among the 8 KiB task threads
         telemetry MinTaskStackUnusedBytes: U32
 
+        @ Bench: deepest stack use since boot, summed over every thread
+        @ (F Prime tasks, main, idle and Zephyr's own), bytes. Interrupt
+        @ stacks are not threads and are not included.
+        telemetry AllStacksPeakBytes: U32
+
         # ----------------------------------------------------------------------
         # Events
         # ----------------------------------------------------------------------

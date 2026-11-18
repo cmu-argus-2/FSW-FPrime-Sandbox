@@ -25,6 +25,9 @@ project/
     Argus/         the flight image: every subsystem
     EpsBench/      Base + Ground + Board + Eps only
     AdcsBench/     Base + Ground + Board + Adcs only
+    EpsMin/        Base + Eps only, for measuring EPS against the other ports
+scripts/
+  ram_report.py    static RAM by owner (EPS task, Base, Ground, platform)
 ```
 
 Each layer has one job:
@@ -223,6 +226,34 @@ Notes:
   on the board.
 - Pass the dictionary from the build tree, as shown. A stale copy under `build-artifacts/`
   may carry outdated component IDs, in which case nothing decodes.
+
+## Measuring the EPS task
+
+`EpsMin` is the image for comparing EPS with the other ports. It runs the EPS task and its
+drivers on `Base` alone: one 1 Hz rate group, time, and a one-way downlink of events and
+telemetry. It has no uplink, so it cannot be commanded (use `EpsBench` for that). Its
+telemetry packetizer is sized to exactly its own two packets, and its thread pool to its
+five threads (`project/Deployments/EpsMin/deployment.cmake`).
+
+```bash
+fprime-util generate zephyr --build-cache build-fprime-zephyr-EpsMin -DARGUS_DEPLOYMENT=EpsMin
+fprime-util build zephyr --build-cache build-fprime-zephyr-EpsMin
+python3 scripts/ram_report.py build-fprime-zephyr-EpsMin
+```
+
+The report splits static RAM into the EPS task, F´ overhead (`Base`, and `Ground` where
+imported) and the platform (Zephyr, USB, F´'s runtime), with each thread's stack counted
+against its owner. Static RAM counts every stack at its full reserved size and leaves out
+the heap, where F´ allocates its queues at boot. To get the RAM actually used, flash the
+image, let it run for a few minutes, read the `EpsMemory` channels from the GDS, and pass
+them in:
+
+```bash
+python3 scripts/ram_report.py build-fprime-zephyr-EpsMin \
+  --heap-peak <HeapPeakBytes> --stacks-peak <AllStacksPeakBytes> --eps-stack-unused <EpsStackUnusedBytes>
+```
+
+The `BENCH,...` lines it prints use the same format as the Rust port's `mem.sh`.
 
 ## RP2350 configuration notes
 
