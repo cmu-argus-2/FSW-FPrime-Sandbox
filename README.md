@@ -5,8 +5,8 @@ An [F´ (F Prime)](https://fprime.jpl.nasa.gov) flight software deployment runni
 
 It is one of three ports of the Argus Python flight software (the others are in Rust and
 C), built so the three can be compared on the same hardware. The deployments run on a
-trimmed CCSDS command/telemetry stack and talk to the F´ Ground Data System over the
-board's USB serial port.
+trimmed command/telemetry stack and talk to the F´ Ground Data System over the
+board's USB serial port, using F´'s own framing rather than CCSDS.
 
 ## Repository layout
 
@@ -16,14 +16,18 @@ project/
   Drivers/         one passive component per chip
   Tasks/           one active component per flight task (EPS, ADCS, ...)
   Subtopologies/
-    Base/          command/telemetry plumbing, rate groups, UART link
+    Base/          rate groups, time, events, telemetry, one-way downlink
+    Ground/        uplink and command dispatcher
     Board/         buses shared between subsystems (I2C)
     Eps/           EPS drivers, and the EPS task once it exists, wired together
     Adcs/          ADCS sensors, and the ADCS task once it exists
   Deployments/
     Argus/         the flight image: every subsystem
-    EpsBench/      Base + Board + Eps only
-    AdcsBench/     Base + Board + Adcs only
+    EpsBench/      Base + Ground + Board + Eps only
+    AdcsBench/     Base + Ground + Board + Adcs only
+    EpsMin/        Base + Eps only, for measuring EPS against the other ports
+scripts/
+  ram_report.py    static RAM by owner (EPS task, Base, Ground, platform)
 ```
 
 Each layer has one job:
@@ -195,6 +199,7 @@ fprime-gds \
   --communication-selection uart \
   --uart-device /dev/cu.usbmodem101 \
   --uart-baud 115200 \
+  --framing-selection fprime \
   --dictionary build-fprime-automatic-zephyr/project/Deployments/Argus/Top/ArgusTopologyDictionary.json \
   --gui-port 5010 \
   -n
@@ -206,7 +211,7 @@ is flowing.
 For a bench, use the dictionary from its own build cache, e.g.
 `build-fprime-zephyr-EpsBench/project/Deployments/EpsBench/Top/EpsBenchTopologyDictionary.json`.
 
-To check the link, send `CdhCore.cmdDisp.CMD_NO_OP` from the **Commanding** tab. A
+To check the link, send `Ground.cmdDisp.CMD_NO_OP` from the **Commanding** tab. A
 `NoOpReceived` event appears under **Events**, and `CommandsDispatched` increments under
 **Channels**.
 
@@ -214,16 +219,49 @@ Notes:
 
 - `--gui-port 5010` avoids port 5000, which macOS AirPlay Receiver occupies and answers
   with an HTTP 403.
+- `--framing-selection fprime` matches the board's F´ framer. Without it the GDS expects
+  CCSDS frames and nothing decodes. Each deployment's `fprime-gds.yml` sets it too, for when
+  the GDS is started from that folder.
 - `-n` tells the GDS not to launch a binary itself; the flight software is already running
   on the board.
 - Pass the dictionary from the build tree, as shown. A stale copy under `build-artifacts/`
   may carry outdated component IDs, in which case nothing decodes.
 
+## Measuring the EPS task
+
+`EpsMin` is the image for comparing EPS with the other ports. It runs the EPS task and its
+drivers on `Base` alone: one 1 Hz rate group, time, and a one-way downlink of events and
+telemetry. It has no uplink, so it cannot be commanded (use `EpsBench` for that). Its
+telemetry packetizer is sized to exactly its own two packets, and its thread pool to its
+five threads (`project/Deployments/EpsMin/deployment.cmake`).
+
+```bash
+fprime-util generate zephyr --build-cache build-fprime-zephyr-EpsMin -DARGUS_DEPLOYMENT=EpsMin
+fprime-util build zephyr --build-cache build-fprime-zephyr-EpsMin
+python3 scripts/ram_report.py build-fprime-zephyr-EpsMin
+```
+
+The report splits static RAM into the EPS task, F´ overhead (`Base`, and `Ground` where
+imported) and the platform (Zephyr, USB, F´'s runtime), with each thread's stack counted
+against its owner. Static RAM counts every stack at its full reserved size and leaves out
+the heap, where F´ allocates its queues at boot. To get the RAM actually used, flash the
+image, let it run for a few minutes, read the `EpsMemory` channels from the GDS, and pass
+them in:
+
+```bash
+python3 scripts/ram_report.py build-fprime-zephyr-EpsMin \
+  --heap-peak <HeapPeakBytes> --stacks-peak <AllStacksPeakBytes> --eps-stack-unused <EpsStackUnusedBytes>
+```
+
+The `BENCH,...` lines it prints use the same format as the Rust port's `mem.sh`.
+
 ## RP2350 configuration notes
 
 F´'s stock configuration targets Linux-class systems. Several defaults do not fit the
 RP2350's 520 KiB of SRAM, and are overridden in `project/config/` rather than by editing
-the vendored framework:
+the vendored framework. No deployment imports F´'s stock `CdhCore`, `ComCcsds` or
+`FileHandling` subtopologies any more (`Base` and `Ground` declare their own instances), so
+the `.fpp` overrides below only matter if one is imported again; the `.hpp` ones still apply.
 
 | Override | Reason |
 | --- | --- |
@@ -244,7 +282,7 @@ F´ actually uses.
 
 Telemetry is downlinked in fixed packets rather than channel by channel. Each subtopology
 lists its channels in `<Name>Packets.fppi` next to its `.fpp` file, using its own range of
-packet ids (`Base` 1-99, `Board` 100-199, `Eps` 200-299, `Adcs` 300-399). Each deployment's
+packet ids (`Base` 1-99, `Board` 100-199, `Eps` 200-299, `Adcs` 300-399, `Ground` 400-499). Each deployment's
 `Top/<Name>Packets.fppi` includes the files of the subtopologies it imports.
 
 A component that adds a telemetry channel must add it to a packet in its subtopology's
@@ -252,8 +290,10 @@ packets file. Otherwise the build fails with
 `telemetry channel ... is neither used nor marked as omitted`. A packet must fit in 512
 bytes including a 15-byte header, or `TlmPacketizer` asserts at boot.
 
-The deployments also omit the `DataProducts` and `FileHandling` subtopologies (apart from
-`prmDb`, which backs the topology's parameter connections), since neither is used here.
+`Base` and `Ground` leave out every F´ service the flight software does not use yet: health
+pings, the command sequencer, the parameter database, version reporting, SystemResources,
+the text event logger, and file uplink and downlink. The comments above `topology
+Subtopology` in `Base.fpp` and `Ground.fpp` list them, and say how to add health pings back.
 
 ### Board and Zephyr revision
 

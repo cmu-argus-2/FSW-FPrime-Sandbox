@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        deployment: [Argus, EpsBench, AdcsBench]
+        deployment: [Argus, EpsBench, AdcsBench, EpsMin]
     steps:
       - uses: actions/checkout@v4
         with:

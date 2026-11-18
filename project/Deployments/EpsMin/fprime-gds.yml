@@ -1,0 +1,6 @@
+# F´ GDS options used when the GDS is launched from this directory.
+# EpsMin has no uplink, so commands sent from the GDS go nowhere.
+
+command-line-options:
+  # The ground link uses F Prime framing (Base.framer), not CCSDS
+  framing-selection: fprime

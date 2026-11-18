@@ -10,7 +10,8 @@ flashing and running the GDS, see the [top-level README](../README.md).
 | `Drivers/` | One **passive** component per chip. It talks to the chip through `Drv` ports (I2C, GPIO) and has no idea which bus or pin it is on, or who calls it. | `Drivers/MAX17205/` |
 | `Tasks/` | One **active** component per flight task. It owns a thread (like a Python `TemplateTask`) and calls its subsystem's drivers through ports. | `Tasks/EpsManager/` |
 | `Subtopologies/<Subsystem>/` | The **instances** of a subsystem's drivers and task, the connections between them, and their configuration (I2C address, GPIO pin). Also the subsystem's telemetry packets. | `Subtopologies/Eps/` |
-| `Subtopologies/Base/` | Command and telemetry plumbing, rate groups and the UART ground link. Every deployment imports it. | |
+| `Subtopologies/Base/` | Rate groups, time, events, telemetry and the one-way downlink over USB. Every deployment imports it. | `Base.rateGroup_1Hz` |
+| `Subtopologies/Ground/` | The uplink and command dispatcher. Imported by deployments that are commanded from the GDS. | `Ground.cmdDisp` |
 | `Subtopologies/Board/` | Hardware that more than one subsystem uses: the I2C buses. | `Board.i2c1` |
 | `Deployments/Argus/` | The flight image. It imports every finished subsystem. | |
 | `Deployments/<Subsystem>Bench/` | One subsystem alone, for bringing drivers up on the flatsat and measuring that subsystem in isolation. | `Deployments/EpsBench/` |
@@ -81,8 +82,8 @@ If you forget one, the build fails with
 `telemetry channel ... is neither used nor marked as omitted`.
 
 **4. The bench wiring.** In `Deployments/EpsBench/Top/topology.fpp`, connect the driver to
-its bus. Until the EPS task exists, drive it from a free rate-group port. `Base` uses
-1 Hz ports 0-5, 0.5 Hz port 0 and 0.25 Hz ports 0-1:
+its bus. Until the EPS task exists, drive it from a free rate-group port. `Base` and
+`Ground` use 1 Hz ports 0-5. The 0.5 Hz group (`import Base.SlowRateGroup`) has every port free:
 
 ```
     connections Bench {
@@ -114,10 +115,10 @@ Example: the EPS task.
    `CONFIG_DYNAMIC_THREAD_STACK_SIZE` in `prj.conf`, and the number of threads must fit
    `CONFIG_DYNAMIC_THREAD_POOL_SIZE`.
 2. Instantiate it in `Subtopologies/Eps/Eps.fpp`, and connect it to its drivers in a
-   `connections` block there, e.g. `manager.fuelGaugeRead -> fuelGauge.read`. Add its
-   health-ping thresholds to a `Subtopologies/Eps/PingEntries.hpp`, as
-   `Subtopologies/Base/PingEntries.hpp` does, and include that from each deployment's
-   `TopologyDefs.hpp`.
+   `connections` block there, e.g. `manager.fuelGaugeRead -> fuelGauge.read`. Health
+   pings are not in the build; if they come back, give the task WARN/FATAL thresholds in
+   the subsystem's `PingEntries.hpp`, as `Subtopologies/Eps/PingEntries.hpp` does (see the
+   note in `Subtopologies/Ground/Ground.fpp`).
 3. In `Deployments/EpsBench/Top/topology.fpp`, replace the rate-group lines that drove the
    drivers with one line driving the task: `Base.rateGroup_1Hz.RateGroupMemberOut[6] ->
    Eps.manager.run`.
@@ -131,14 +132,14 @@ For example payload, which would need `Subtopologies/Payload/` and
 `Deployments/PayloadBench/`. `Adcs` and `AdcsBench` were made exactly this way.
 
 1. **Subtopology.** Copy the layout of `Subtopologies/Adcs/`: `Payload.fpp` with
-   `module Payload`, `constant BASE_ID` from the next free slot (04, `0x10400000`), a
+   `module Payload`, `constant BASE_ID` from the next free slot (05, `0x10500000`), a
    `topology Subtopology` block, `SubtopologyTopologyDefs.hpp`, `PayloadPackets.fppi` (ids
-   400-499), and `CMakeLists.txt`. Register it in `Subtopologies/CMakeLists.txt`, and
+   500-599), and `CMakeLists.txt`. Register it in `Subtopologies/CMakeLists.txt`, and
    claim its slot in the table there.
 2. **Bench.** Copy `Deployments/AdcsBench/`, and rename every `AdcsBench` in file names and
    contents (`module`, topology name, header guards, `#include` paths, the packets set
-   and its `TlmPackets` alias in `TopologyDefs.hpp`). Import `Base`, `Board` and the new
-   subsystem, and include their packets files.
+   and its `TlmPackets` alias in `TopologyDefs.hpp`). Import `Base`, `Ground` (to command it from the
+   GDS), `Board` and the new subsystem, and include their packets files.
 3. **CI.** Add the bench to the `deployment` matrix in `.github/workflows/build.yml`.
 
 ## IDs
@@ -146,7 +147,7 @@ For example payload, which would need `Subtopologies/Payload/` and
 | What | Rule | Where it's written down |
 | --- | --- | --- |
 | Instance base ID | `0x1SSCCxxx`: `SS` is the subtopology slot, `CC` the instance within it | `Subtopologies/CMakeLists.txt` |
-| Telemetry packet id | The subtopology's range: Base 1-99, Board 100-199, Eps 200-299, Adcs 300-399 | Same table |
+| Telemetry packet id | The subtopology's range: Base 1-99, Board 100-199, Eps 200-299, Adcs 300-399, Ground 400-499 | Same table |
 
 Because a subtopology's IDs don't depend on the deployment, a channel decodes the same
 on the bench and on the flight image.
