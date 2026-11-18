@@ -36,14 +36,50 @@ module AdcsBench {
   # Direct graph specifiers
   # ----------------------------------------------------------------------
 
+    connections Buses {
+      # Light sensors -> I2C bus drivers. Output ports must be connected:
+      # invoking an unconnected one asserts at runtime.
+      #
+      # i2c1: the +X/+Y faces and the +Z sun sensor.
+      Adcs.lightSensorXp.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorXp.busWrite -> Board.i2c1.write
+      Adcs.lightSensorYp.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorYp.busWrite -> Board.i2c1.write
+      Adcs.lightSensorZpXp.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorZpXp.busWrite -> Board.i2c1.write
+      Adcs.lightSensorZpYm.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorZpYm.busWrite -> Board.i2c1.write
+      Adcs.lightSensorZpXm.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorZpXm.busWrite -> Board.i2c1.write
+      Adcs.lightSensorZpYp.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorZpYp.busWrite -> Board.i2c1.write
+
+      # i2c0: the -X/-Y/-Z faces.
+      Adcs.lightSensorXm.busWriteRead -> Board.i2c0.writeRead
+      Adcs.lightSensorXm.busWrite -> Board.i2c0.write
+      Adcs.lightSensorYm.busWriteRead -> Board.i2c0.writeRead
+      Adcs.lightSensorYm.busWrite -> Board.i2c0.write
+      Adcs.lightSensorZm.busWriteRead -> Board.i2c0.writeRead
+      Adcs.lightSensorZm.busWrite -> Board.i2c0.write
+    }
+
     connections Bench {
-      # Until the ADCS task exists, a driver under test can be driven
-      # straight from a rate group here, starting at the first free member
-      # port (Base uses 1Hz 0-5, 0.5Hz 0, 0.25Hz 0-1), e.g.
-      #   Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Adcs.imu.run
-      # and connected to its bus, e.g.
-      #   Adcs.imu.busWriteRead -> Board.i2c0.writeRead
-      # The ADCS task PR replaces the rate group lines with the task.
+      # Rate group drives sampling, standing in for the ADCS task until that
+      # exists: the first tick boots each sensor, every tick after reads it.
+      # The 0.5 Hz group is used because it has exactly the nine free member
+      # ports needed (Base uses member 0); the 1 Hz group has four. A read
+      # normally takes three short transactions, but blocks for up to 1.1 s
+      # if a part never reports a finished conversion. The ADCS task PR
+      # replaces these lines with the task.
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[1] -> Adcs.lightSensorXp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[2] -> Adcs.lightSensorXm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[3] -> Adcs.lightSensorYp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[4] -> Adcs.lightSensorYm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[5] -> Adcs.lightSensorZpXp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[6] -> Adcs.lightSensorZpYm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[7] -> Adcs.lightSensorZpXm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[8] -> Adcs.lightSensorZpYp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[9] -> Adcs.lightSensorZm.run
     }
 
   }

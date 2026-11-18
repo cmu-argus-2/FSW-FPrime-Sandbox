@@ -8,3 +8,4 @@
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/ADM1176/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/BatteryHeaters/")
 add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/MAX17205/")
+add_fprime_subdirectory("${CMAKE_CURRENT_LIST_DIR}/OPT4003/")
