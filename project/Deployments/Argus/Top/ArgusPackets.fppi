@@ -10,7 +10,6 @@
 # tlmSend ENABLE_GROUP and CONFIGURE_GROUP_RATES commands:
 #   group 1: health and sensor data that changes every cycle
 #   group 2: housekeeping that changes slowly
-#   group 3: version strings, which change only at boot
 #
 # The packets themselves live with the subtopology that owns the channels;
 # include one file per imported subtopology.
@@ -18,6 +17,7 @@
 telemetry packets ArgusPackets {
 
   include "../../../Subtopologies/Base/BasePackets.fppi"
+  include "../../../Subtopologies/Ground/GroundPackets.fppi"
   include "../../../Subtopologies/Eps/EpsPackets.fppi"
 
 } omit {

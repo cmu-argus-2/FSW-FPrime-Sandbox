@@ -5,6 +5,7 @@
 telemetry packets EpsBenchPackets {
 
   include "../../../Subtopologies/Base/BasePackets.fppi"
+  include "../../../Subtopologies/Ground/GroundPackets.fppi"
   include "../../../Subtopologies/Eps/EpsPackets.fppi"
 
 } omit {
