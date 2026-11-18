@@ -11,6 +11,7 @@
 #include "Svc/Subtopologies/ComCcsds/PingEntries.hpp"
 #include "Svc/Subtopologies/FileHandling/PingEntries.hpp"
 #include "project/Subtopologies/Base/PingEntries.hpp"
+#include "project/Subtopologies/Eps/PingEntries.hpp"
 
 // SubtopologyTopologyDefs includes
 #include "Svc/Subtopologies/CdhCore/SubtopologyTopologyDefs.hpp"

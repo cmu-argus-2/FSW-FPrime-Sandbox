@@ -116,6 +116,44 @@ void BatteryHeatersTester ::testDisableHeater1DropsMasterWhenHeater0Off() {
 }
 
 // ----------------------------------------------------------------------
+// Tests: dual-heater board, EPS task ports
+// ----------------------------------------------------------------------
+
+void BatteryHeatersTester ::testSetHeater0OnDrivesMasterAndHeater0() {
+    ASSERT_TRUE(this->invoke_to_setHeater(0, HeaterId::HEATER0, true));
+
+    // Same GPIO, telemetry and event behaviour as the EnableHeater0 command
+    ASSERT_from_enableWrite_SIZE(1);
+    ASSERT_from_enableWrite(0, Fw::Logic::HIGH);
+    ASSERT_from_heater0Write_SIZE(1);
+    ASSERT_from_heater0Write(0, Fw::Logic::HIGH);
+    ASSERT_from_heater1Write_SIZE(0);
+
+    ASSERT_TLM_Heater0Enabled_SIZE(1);
+    ASSERT_TLM_Heater0Enabled(0, true);
+    ASSERT_EVENTS_Heater0Enabled_SIZE(1);
+
+    // getHeater reports what was just set, and heater 1 is untouched
+    ASSERT_TRUE(this->invoke_to_getHeater(0, HeaterId::HEATER0));
+    ASSERT_FALSE(this->invoke_to_getHeater(0, HeaterId::HEATER1));
+}
+
+void BatteryHeatersTester ::testSetHeater0OffKeepsMasterWhileHeater1On() {
+    ASSERT_TRUE(this->invoke_to_setHeater(0, HeaterId::HEATER0, true));
+    ASSERT_TRUE(this->invoke_to_setHeater(0, HeaterId::HEATER1, true));
+    this->clearHistory();
+
+    // Heater 1 still on: master must stay high
+    ASSERT_TRUE(this->invoke_to_setHeater(0, HeaterId::HEATER0, false));
+    ASSERT_from_heater0Write_SIZE(1);
+    ASSERT_from_heater0Write(0, Fw::Logic::LOW);
+    ASSERT_from_enableWrite_SIZE(0);
+
+    ASSERT_FALSE(this->invoke_to_getHeater(0, HeaterId::HEATER0));
+    ASSERT_TRUE(this->invoke_to_getHeater(0, HeaterId::HEATER1));
+}
+
+// ----------------------------------------------------------------------
 // Tests: single-heater board
 // ----------------------------------------------------------------------
 
@@ -147,6 +185,18 @@ void BatteryHeatersTester ::testDisableHeater0DropsMasterWhenHeater1NotPresent()
     ASSERT_from_heater0Write(0, Fw::Logic::LOW);
     ASSERT_from_enableWrite_SIZE(1);
     ASSERT_from_enableWrite(0, Fw::Logic::LOW);
+}
+
+void BatteryHeatersTester ::testSetHeater1RejectedWhenNotPresent() {
+    ASSERT_FALSE(this->invoke_to_setHeater(0, HeaterId::HEATER1, true));
+
+    // No GPIO activity at all, including the master line
+    ASSERT_FROM_PORT_HISTORY_SIZE(0);
+    ASSERT_TLM_SIZE(0);
+    ASSERT_EVENTS_SIZE(1);
+    ASSERT_EVENTS_Heater1NotPresent_SIZE(1);
+
+    ASSERT_FALSE(this->invoke_to_getHeater(0, HeaterId::HEATER1));
 }
 
 // ----------------------------------------------------------------------
@@ -199,6 +249,8 @@ void BatteryHeatersTester ::sendAndCheck(FwOpcodeType opCode, Fw::CmdResponse ex
 void BatteryHeatersTester ::connectPorts() {
     // Tester -> component
     this->connect_to_cmdIn(0, this->component.get_cmdIn_InputPort(0));
+    this->connect_to_setHeater(0, this->component.get_setHeater_InputPort(0));
+    this->connect_to_getHeater(0, this->component.get_getHeater_InputPort(0));
 
     // Component -> tester (framework ports)
     this->component.set_cmdRegOut_OutputPort(0, this->get_from_cmdRegOut(0));
