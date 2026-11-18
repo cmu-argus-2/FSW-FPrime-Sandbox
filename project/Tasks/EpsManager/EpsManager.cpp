@@ -72,7 +72,9 @@ void EpsManager ::run_handler(FwIndexType portNum, U32 context) {
 
 void EpsManager ::pingIn_handler(FwIndexType portNum, U32 key) {
     // Answering on this thread proves the EPS thread is alive. A wedged I2C
-    // bus inside a cycle shows up as missed pings in CdhCore.health.
+    // bus inside a cycle would show up as missed health pings. Health is not
+    // in the build at the moment (see Subtopologies/Ground/Ground.fpp), so
+    // nothing pings this port yet.
     this->pingOut_out(0, key);
 }
 

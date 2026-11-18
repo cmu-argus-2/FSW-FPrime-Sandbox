@@ -4,6 +4,5 @@ register_fprime_module(
         "${CMAKE_CURRENT_LIST_DIR}/Base.fpp"
     HEADERS
         "${CMAKE_CURRENT_LIST_DIR}/SubtopologyTopologyDefs.hpp"
-        "${CMAKE_CURRENT_LIST_DIR}/PingEntries.hpp"
     INTERFACE
 )

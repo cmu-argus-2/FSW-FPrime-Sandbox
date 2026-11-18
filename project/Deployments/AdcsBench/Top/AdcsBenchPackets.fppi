@@ -5,6 +5,8 @@
 telemetry packets AdcsBenchPackets {
 
   include "../../../Subtopologies/Base/BasePackets.fppi"
+  include "../../../Subtopologies/Ground/GroundPackets.fppi"
+  include "../../../Subtopologies/Base/SlowRateGroupPackets.fppi"
   include "../../../Subtopologies/Adcs/AdcsPackets.fppi"
 
 } omit {

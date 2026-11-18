@@ -16,10 +16,7 @@ namespace Argus {
  * Instances configure themselves through phase code in their subtopology's .fpp file, which the autocoder runs in
  * configComponents(). Only instances that belong to another project's subtopology are configured here.
  */
-void configureTopology() {
-    // PrmDb file name must be supplied by the using topology
-    FileHandling::prmDb.configure("PrmDb.dat");
-}
+void configureTopology() {}
 
 void setupTopology(const TopologyState& state) {
     // Autocoded initialization. Function provided by autocoder.
@@ -34,10 +31,6 @@ void setupTopology(const TopologyState& state) {
     configComponents(state);
     // Project-specific component configuration. Function provided above. May be inlined, if desired.
     configureTopology();
-    // Autocoded parameter read from file. Function provided by autocoder.
-    readParameters();
-    // Autocoded parameter loading. Function provided by autocoder.
-    loadParameters();
     // Autocoded task kick-off (active components). Function provided by autocoder.
     startTasks(state);
 }
