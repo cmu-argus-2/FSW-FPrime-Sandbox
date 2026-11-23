@@ -8,6 +8,7 @@ module Argus {
   # Subtopology imports
   # ----------------------------------------------------------------------
     import Base.Subtopology
+    import Ground.Subtopology
     import Board.Subtopology
     import Eps.Subtopology
 
@@ -15,17 +16,13 @@ module Argus {
   # Pattern graph specifiers
   # ----------------------------------------------------------------------
 
-    command connections instance CdhCore.cmdDisp
-    event connections instance CdhCore.events
-    telemetry connections instance CdhCore.tlmSend
-    text event connections instance CdhCore.textLogger
-    health connections instance CdhCore.$health
-    param connections instance FileHandling.prmDb
+    command connections instance Ground.cmdDisp
+    event connections instance Base.events
+    telemetry connections instance Base.tlmSend
     time connections instance Base.chronoTime
 
   # ----------------------------------------------------------------------
-  # Telemetry packets for CdhCore.tlmSend, a TlmPacketizer
-  # (see project/config/CdhCoreTlmConfig.fpp)
+  # Telemetry packets for Base.tlmSend, a TlmPacketizer
   # ----------------------------------------------------------------------
 
     include "ArgusPackets.fppi"
@@ -35,7 +32,7 @@ module Argus {
   # ----------------------------------------------------------------------
 
     connections EpsWiring {
-      # EPS task on the 1 Hz rate group (Base uses members 0-5)
+      # EPS task on the 1 Hz rate group (Base and Ground use members 0-5)
       Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Eps.epsManager.run
 
       # Power monitors on I2C1

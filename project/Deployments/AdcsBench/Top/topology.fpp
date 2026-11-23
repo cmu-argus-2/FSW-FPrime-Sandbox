@@ -10,6 +10,9 @@ module AdcsBench {
   # Subtopology imports
   # ----------------------------------------------------------------------
     import Base.Subtopology
+    import Ground.Subtopology
+    # 0.5 Hz rate group: driver bring-up samples the light sensors here
+    import Base.SlowRateGroup
     import Board.Subtopology
     import Adcs.Subtopology
 
@@ -17,17 +20,13 @@ module AdcsBench {
   # Pattern graph specifiers
   # ----------------------------------------------------------------------
 
-    command connections instance CdhCore.cmdDisp
-    event connections instance CdhCore.events
-    telemetry connections instance CdhCore.tlmSend
-    text event connections instance CdhCore.textLogger
-    health connections instance CdhCore.$health
-    param connections instance FileHandling.prmDb
+    command connections instance Ground.cmdDisp
+    event connections instance Base.events
+    telemetry connections instance Base.tlmSend
     time connections instance Base.chronoTime
 
   # ----------------------------------------------------------------------
-  # Telemetry packets for CdhCore.tlmSend, a TlmPacketizer
-  # (see project/config/CdhCoreTlmConfig.fpp)
+  # Telemetry packets for Base.tlmSend, a TlmPacketizer
   # ----------------------------------------------------------------------
 
     include "AdcsBenchPackets.fppi"
@@ -46,8 +45,8 @@ module AdcsBench {
     connections Bench {
       # Until the ADCS task exists, each driver under test is driven straight
       # from a rate group here, from the first free member port (Base uses
-      # 1Hz 0-5, 0.5Hz 0, 0.25Hz 0-1). The ADCS task PR replaces these lines
-      # with the task.
+      # 1Hz 0-3 and Ground 1Hz 4-5; every 0.5Hz member is free). The ADCS
+      # task PR replaces these lines with the task.
       #
       # IMU: the first tick boots it, which takes about 120 ms; every tick
       # after reads all three sensors.
