@@ -36,14 +36,22 @@ module AdcsBench {
   # Direct graph specifiers
   # ----------------------------------------------------------------------
 
+    connections Buses {
+      # Drivers -> I2C bus drivers. Output ports must be connected: invoking
+      # an unconnected one asserts at runtime.
+      Adcs.imu.busWriteRead -> Board.i2c0.writeRead
+      Adcs.imu.busWrite -> Board.i2c0.write
+    }
+
     connections Bench {
-      # Until the ADCS task exists, a driver under test can be driven
-      # straight from a rate group here, starting at the first free member
-      # port (Base uses 1Hz 0-5, 0.5Hz 0, 0.25Hz 0-1), e.g.
-      #   Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Adcs.imu.run
-      # and connected to its bus, e.g.
-      #   Adcs.imu.busWriteRead -> Board.i2c0.writeRead
-      # The ADCS task PR replaces the rate group lines with the task.
+      # Until the ADCS task exists, each driver under test is driven straight
+      # from a rate group here, from the first free member port (Base uses
+      # 1Hz 0-5, 0.5Hz 0, 0.25Hz 0-1). The ADCS task PR replaces these lines
+      # with the task.
+      #
+      # IMU: the first tick boots it, which takes about 120 ms; every tick
+      # after reads all three sensors.
+      Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Adcs.imu.run
     }
 
   }
