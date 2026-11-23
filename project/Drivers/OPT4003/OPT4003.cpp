@@ -127,15 +127,18 @@ Fw::Success OPT4003::sampleLux(F32& lux) {
 
     // Wait for CONVERSION_READY_FLAG. In continuous mode at 600 us this is
     // normally set on the first poll; the timeout only matters if the part
-    // has stalled, in which case the last completed result is read anyway.
+    // has stalled, in which case the last completed result is read anyway
+    // and ConversionTimeout says it may be stale.
     Os::RawTime start;
     (void)start.now();
+    bool timedOut = false;
     while (true) {
         U16 flags = 0;
         if (this->readRegister(FLAGS_ADDR, flags) != Drv::I2cStatus::I2C_OK) {
             return Fw::Success::FAILURE;
         }
         if ((flags & FLAG_CONVERSION_READY) != 0U) {
+            this->log_WARNING_LO_ConversionTimeout_ThrottleClear();
             break;
         }
 
@@ -143,6 +146,7 @@ Fw::Success OPT4003::sampleLux(F32& lux) {
         (void)now.now();
         U32 elapsedUs = 0;
         if (now.getDiffUsec(start, elapsedUs) != Os::RawTime::Status::OP_OK || elapsedUs >= CONVERSION_TIMEOUT_US) {
+            timedOut = true;
             break;
         }
         (void)Os::Task::delay(Fw::TimeInterval(0, CONVERSION_POLL_US));
@@ -165,6 +169,9 @@ Fw::Success OPT4003::sampleLux(F32& lux) {
 
     lux = decodeLux(msb, lsb);
     this->tlmWrite_Lux(lux);
+    if (timedOut) {
+        this->log_WARNING_LO_ConversionTimeout(CONVERSION_TIMEOUT_US);
+    }
 
     // Every transaction in this read succeeded, so the bus is healthy: re-arm
     // the error event so a later fault is reported again.

@@ -111,6 +111,18 @@ module project {
             format "OPT4003 device ID mismatch: read 0x{x}, expected 0x0221" \
             throttle 5
 
+        @ No conversion finished within the timeout. The result registers were
+        @ read anyway and returned as a success, so the reading may be stale:
+        @ it is the last conversion the part completed. Throttled because a
+        @ stalled part times out on every read; cleared by any read that sees
+        @ a finished conversion.
+        event ConversionTimeout(
+            timeoutUs: U32 @< How long the read waited, in microseconds
+        ) \
+            severity warning low \
+            format "OPT4003 conversion not ready after {} us; returned the last completed result" \
+            throttle 5
+
         # ----------------------------------------------------------------------
         # Standard AC ports
         # ----------------------------------------------------------------------

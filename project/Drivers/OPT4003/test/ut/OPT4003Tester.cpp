@@ -337,9 +337,17 @@ void OPT4003Tester::testReadTimesOut() {
     EXPECT_EQ(this->m_lsbReads, 1U);
     EXPECT_EQ(lux, EXPECTED_LUX);
     ASSERT_TLM_Lux_SIZE(1);
-    ASSERT_EVENTS_SIZE(0);
 
+    // The reading is flagged as possibly stale.
+    ASSERT_EVENTS_SIZE(1);
+    ASSERT_EVENTS_ConversionTimeout_SIZE(1);
+    ASSERT_EVENTS_ConversionTimeout(0, OPT4003::CONVERSION_TIMEOUT_US);
+
+    // A read that sees a finished conversion reports nothing.
     this->m_neverReady = false;
+    this->resetRecording();
+    ASSERT_EQ(this->invoke_to_read(0, lux), Fw::Success::SUCCESS);
+    ASSERT_EVENTS_SIZE(0);
 }
 
 void OPT4003Tester::testReadResultFailure() {
