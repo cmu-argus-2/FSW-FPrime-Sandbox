@@ -10,6 +10,9 @@ module AdcsBench {
   # Subtopology imports
   # ----------------------------------------------------------------------
     import Base.Subtopology
+    import Ground.Subtopology
+    # 0.5 Hz rate group: driver bring-up samples the light sensors here
+    import Base.SlowRateGroup
     import Board.Subtopology
     import Adcs.Subtopology
 
@@ -17,17 +20,13 @@ module AdcsBench {
   # Pattern graph specifiers
   # ----------------------------------------------------------------------
 
-    command connections instance CdhCore.cmdDisp
-    event connections instance CdhCore.events
-    telemetry connections instance CdhCore.tlmSend
-    text event connections instance CdhCore.textLogger
-    health connections instance CdhCore.$health
-    param connections instance FileHandling.prmDb
+    command connections instance Ground.cmdDisp
+    event connections instance Base.events
+    telemetry connections instance Base.tlmSend
     time connections instance Base.chronoTime
 
   # ----------------------------------------------------------------------
-  # Telemetry packets for CdhCore.tlmSend, a TlmPacketizer
-  # (see project/config/CdhCoreTlmConfig.fpp)
+  # Telemetry packets for Base.tlmSend, a TlmPacketizer
   # ----------------------------------------------------------------------
 
     include "AdcsBenchPackets.fppi"
@@ -37,10 +36,14 @@ module AdcsBench {
   # ----------------------------------------------------------------------
 
     connections Buses {
-      # Light sensors -> I2C bus drivers. Output ports must be connected:
-      # invoking an unconnected one asserts at runtime.
+      # Drivers -> I2C bus drivers. Output ports must be connected: invoking
+      # an unconnected one asserts at runtime.
       #
-      # i2c1: the +X/+Y faces and the +Z sun sensor.
+      # IMU, i2c0.
+      Adcs.imu.busWriteRead -> Board.i2c0.writeRead
+      Adcs.imu.busWrite -> Board.i2c0.write
+
+      # Light sensors, i2c1: the +X/+Y faces and the +Z sun sensor.
       Adcs.lightSensorXp.busWriteRead -> Board.i2c1.writeRead
       Adcs.lightSensorXp.busWrite -> Board.i2c1.write
       Adcs.lightSensorYp.busWriteRead -> Board.i2c1.writeRead
@@ -54,7 +57,7 @@ module AdcsBench {
       Adcs.lightSensorZpYp.busWriteRead -> Board.i2c1.writeRead
       Adcs.lightSensorZpYp.busWrite -> Board.i2c1.write
 
-      # i2c0: the -X/-Y/-Z faces.
+      # Light sensors, i2c0: the -X/-Y/-Z faces.
       Adcs.lightSensorXm.busWriteRead -> Board.i2c0.writeRead
       Adcs.lightSensorXm.busWrite -> Board.i2c0.write
       Adcs.lightSensorYm.busWriteRead -> Board.i2c0.writeRead
@@ -64,22 +67,28 @@ module AdcsBench {
     }
 
     connections Bench {
-      # Rate group drives sampling, standing in for the ADCS task until that
-      # exists: the first tick boots each sensor, every tick after reads it.
-      # The 0.5 Hz group is used because it has exactly the nine free member
-      # ports needed (Base uses member 0); the 1 Hz group has four. A read
+      # Until the ADCS task exists, each driver under test is driven straight
+      # from a rate group here, from the first free member port (Base uses
+      # 1Hz 0-3 and Ground 1Hz 4-5; every 0.5Hz member is free). The ADCS
+      # task PR replaces these lines with the task.
+      #
+      # IMU: the first tick boots it, which takes about 120 ms; every tick
+      # after reads all three sensors.
+      Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Adcs.imu.run
+
+      # Light sensors, at 0.5 Hz because the nine need nine member ports:
+      # the first tick boots each sensor, every tick after reads it. A read
       # normally takes three short transactions, but blocks for up to 1.1 s
-      # if a part never reports a finished conversion. The ADCS task PR
-      # replaces these lines with the task.
-      Base.rateGroup_0_5Hz.RateGroupMemberOut[1] -> Adcs.lightSensorXp.run
-      Base.rateGroup_0_5Hz.RateGroupMemberOut[2] -> Adcs.lightSensorXm.run
-      Base.rateGroup_0_5Hz.RateGroupMemberOut[3] -> Adcs.lightSensorYp.run
-      Base.rateGroup_0_5Hz.RateGroupMemberOut[4] -> Adcs.lightSensorYm.run
-      Base.rateGroup_0_5Hz.RateGroupMemberOut[5] -> Adcs.lightSensorZpXp.run
-      Base.rateGroup_0_5Hz.RateGroupMemberOut[6] -> Adcs.lightSensorZpYm.run
-      Base.rateGroup_0_5Hz.RateGroupMemberOut[7] -> Adcs.lightSensorZpXm.run
-      Base.rateGroup_0_5Hz.RateGroupMemberOut[8] -> Adcs.lightSensorZpYp.run
-      Base.rateGroup_0_5Hz.RateGroupMemberOut[9] -> Adcs.lightSensorZm.run
+      # if a part never reports a finished conversion.
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[0] -> Adcs.lightSensorXp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[1] -> Adcs.lightSensorXm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[2] -> Adcs.lightSensorYp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[3] -> Adcs.lightSensorYm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[4] -> Adcs.lightSensorZpXp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[5] -> Adcs.lightSensorZpYm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[6] -> Adcs.lightSensorZpXm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[7] -> Adcs.lightSensorZpYp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[8] -> Adcs.lightSensorZm.run
     }
 
   }
