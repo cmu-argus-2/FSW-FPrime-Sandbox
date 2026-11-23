@@ -106,6 +106,72 @@ module Eps {
   @ are the driver's defaults, so it needs no configure() call.
   instance fuelGauge: project.MAX17205 base id BASE_ID + 0x0A000
 
+  # Torque coils. COIL_EN powers all six DRV8235s and has no boot hog, so it
+  # is driven high here, as argus_v4.py does at import. The drivers' own
+  # register setup waits for their first read on the EPS thread, by which
+  # time the chips are powered. Addresses repeat across the two buses: the
+  # minus faces are on I2C0 and the plus faces on I2C1 (argus_v4.py).
+
+  @ COIL_EN, GPIO1
+  instance coilEnGpio: Zephyr.ZephyrGpioDriver base id BASE_ID + 0x0B000 \
+  {
+    phase Fpp.ToCpp.Phases.configObjects """
+    const struct gpio_dt_spec pin = GPIO_DT_SPEC_GET(DT_PATH(zephyr_user), coil_en_gpios);
+    """
+    phase Fpp.ToCpp.Phases.configComponents """
+    FW_ASSERT(Eps::coilEnGpio.open(ConfigObjects::Eps_coilEnGpio::pin, Zephyr::ZephyrGpioDriver::GpioConfiguration::OUT) == Os::File::Status::OP_OK);
+    gpio_pin_set_dt(&ConfigObjects::Eps_coilEnGpio::pin, 1);
+    """
+  }
+
+  @ +X torque coil driver, I2C1 0x30
+  instance coilXp: project.DRV8235 base id BASE_ID + 0x0C000 \
+  {
+    phase Fpp.ToCpp.Phases.configComponents """
+    (void) Eps::coilXp.configure(0x30);
+    """
+  }
+
+  @ -X torque coil driver, I2C0 0x30
+  instance coilXm: project.DRV8235 base id BASE_ID + 0x0D000 \
+  {
+    phase Fpp.ToCpp.Phases.configComponents """
+    (void) Eps::coilXm.configure(0x30);
+    """
+  }
+
+  @ +Y torque coil driver, I2C1 0x31
+  instance coilYp: project.DRV8235 base id BASE_ID + 0x0E000 \
+  {
+    phase Fpp.ToCpp.Phases.configComponents """
+    (void) Eps::coilYp.configure(0x31);
+    """
+  }
+
+  @ -Y torque coil driver, I2C0 0x31
+  instance coilYm: project.DRV8235 base id BASE_ID + 0x0F000 \
+  {
+    phase Fpp.ToCpp.Phases.configComponents """
+    (void) Eps::coilYm.configure(0x31);
+    """
+  }
+
+  @ +Z torque coil driver, I2C1 0x33
+  instance coilZp: project.DRV8235 base id BASE_ID + 0x10000 \
+  {
+    phase Fpp.ToCpp.Phases.configComponents """
+    (void) Eps::coilZp.configure(0x33);
+    """
+  }
+
+  @ -Z torque coil driver, I2C0 0x33
+  instance coilZm: project.DRV8235 base id BASE_ID + 0x11000 \
+  {
+    phase Fpp.ToCpp.Phases.configComponents """
+    (void) Eps::coilZm.configure(0x33);
+    """
+  }
+
   # ----------------------------------------------------------------------
   # Subtopology
   # ----------------------------------------------------------------------
@@ -125,6 +191,13 @@ module Eps {
     instance pmRadio
     instance pmJetson
     instance fuelGauge
+    instance coilEnGpio
+    instance coilXp
+    instance coilXm
+    instance coilYp
+    instance coilYm
+    instance coilZp
+    instance coilZm
 
     connections Heaters {
       # HEAT_EN, GPIO6
@@ -147,6 +220,14 @@ module Eps {
       epsManager.powerMonitors[1] -> pmGps.read
       epsManager.powerMonitors[2] -> pmRadio.read
       epsManager.powerMonitors[3] -> pmJetson.read
+
+      # Torque coils, in EpsLoad order
+      epsManager.coilMonitors[0] -> coilXp.read
+      epsManager.coilMonitors[1] -> coilXm.read
+      epsManager.coilMonitors[2] -> coilYp.read
+      epsManager.coilMonitors[3] -> coilYm.read
+      epsManager.coilMonitors[4] -> coilZp.read
+      epsManager.coilMonitors[5] -> coilZm.read
 
       epsManager.fuelGauge -> fuelGauge.read
 

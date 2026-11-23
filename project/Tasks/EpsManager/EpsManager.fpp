@@ -124,6 +124,10 @@ module project {
         @ Power monitors: 0 mainboard, 1 GPS (peripheral), 2 radio, 3 Jetson
         output port powerMonitors: [4] project.PowerRead
 
+        @ Torque coil drivers, in EpsLoad order: 0 XP, 1 XM, 2 YP, 3 YM,
+        @ 4 ZP, 5 ZM. Values are negative while a coil is driven in reverse.
+        output port coilMonitors: [6] project.PowerRead
+
         @ Battery fuel gauge
         output port fuelGauge: project.FuelGaugeRead
 

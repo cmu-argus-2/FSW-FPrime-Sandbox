@@ -41,6 +41,26 @@ TEST(EpsManager, MonitorValuesPublishedEveryFifthRun) {
     tester.testMonitorValuesPublishedEveryFifthRun();
 }
 
+TEST(EpsManager, CoilsReadEveryRun) {
+    project::EpsManagerTester tester;
+    tester.testCoilsReadEveryRun();
+}
+
+TEST(EpsManager, CoilValuesInData) {
+    project::EpsManagerTester tester;
+    tester.testCoilValuesInData();
+}
+
+TEST(EpsManager, CoilAlertAtThresholdInEitherDirection) {
+    project::EpsManagerTester tester;
+    tester.testCoilAlertAtThresholdInEitherDirection();
+}
+
+TEST(EpsManager, FailedCoilReadsAsZero) {
+    project::EpsManagerTester tester;
+    tester.testFailedCoilReadsAsZero();
+}
+
 // Fuel gauge cycle
 
 TEST(EpsManager, FuelGaugeValuesTruncated) {
