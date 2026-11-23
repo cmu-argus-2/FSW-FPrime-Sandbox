@@ -38,8 +38,32 @@ module AdcsBench {
     connections Buses {
       # Drivers -> I2C bus drivers. Output ports must be connected: invoking
       # an unconnected one asserts at runtime.
+      #
+      # IMU, i2c0.
       Adcs.imu.busWriteRead -> Board.i2c0.writeRead
       Adcs.imu.busWrite -> Board.i2c0.write
+
+      # Light sensors, i2c1: the +X/+Y faces and the +Z sun sensor.
+      Adcs.lightSensorXp.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorXp.busWrite -> Board.i2c1.write
+      Adcs.lightSensorYp.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorYp.busWrite -> Board.i2c1.write
+      Adcs.lightSensorZpXp.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorZpXp.busWrite -> Board.i2c1.write
+      Adcs.lightSensorZpYm.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorZpYm.busWrite -> Board.i2c1.write
+      Adcs.lightSensorZpXm.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorZpXm.busWrite -> Board.i2c1.write
+      Adcs.lightSensorZpYp.busWriteRead -> Board.i2c1.writeRead
+      Adcs.lightSensorZpYp.busWrite -> Board.i2c1.write
+
+      # Light sensors, i2c0: the -X/-Y/-Z faces.
+      Adcs.lightSensorXm.busWriteRead -> Board.i2c0.writeRead
+      Adcs.lightSensorXm.busWrite -> Board.i2c0.write
+      Adcs.lightSensorYm.busWriteRead -> Board.i2c0.writeRead
+      Adcs.lightSensorYm.busWrite -> Board.i2c0.write
+      Adcs.lightSensorZm.busWriteRead -> Board.i2c0.writeRead
+      Adcs.lightSensorZm.busWrite -> Board.i2c0.write
     }
 
     connections Bench {
@@ -51,6 +75,20 @@ module AdcsBench {
       # IMU: the first tick boots it, which takes about 120 ms; every tick
       # after reads all three sensors.
       Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Adcs.imu.run
+
+      # Light sensors, at 0.5 Hz because the nine need nine member ports:
+      # the first tick boots each sensor, every tick after reads it. A read
+      # normally takes three short transactions, but blocks for up to 1.1 s
+      # if a part never reports a finished conversion.
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[0] -> Adcs.lightSensorXp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[1] -> Adcs.lightSensorXm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[2] -> Adcs.lightSensorYp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[3] -> Adcs.lightSensorYm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[4] -> Adcs.lightSensorZpXp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[5] -> Adcs.lightSensorZpYm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[6] -> Adcs.lightSensorZpXm.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[7] -> Adcs.lightSensorZpYp.run
+      Base.rateGroup_0_5Hz.RateGroupMemberOut[8] -> Adcs.lightSensorZm.run
     }
 
   }
