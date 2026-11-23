@@ -12,7 +12,7 @@ module Adcs {
 
   @ BMX160 IMU (accelerometer, gyroscope, magnetometer), i2c0 0x68: SDO is
   @ pulled to ground through R136 on the mainboard.
-  instance imu: project.BMX160 base id BASE_ID + 0x01000 \
+  instance imu: project.BMX160 base id BASE_ID + 0x0A000 \
   {
     phase Fpp.ToCpp.Phases.configComponents """
     Adcs::imu.configure(0x68);

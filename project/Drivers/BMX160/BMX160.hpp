@@ -108,7 +108,8 @@ class BMX160 final : public BMX160ComponentBase {
     static constexpr F32 GYRO_FULL_SCALE_DPS[GyroRange::NUM_CONSTANTS] = {2000.0F, 1000.0F, 500.0F, 250.0F, 125.0F};
 
     //! Accelerometer full scale in g, indexed by (ACC_RANGE code >> 2). The
-    //! valid codes 0x03, 0x05, 0x08 and 0x0C map onto indices 0..3.
+    //! valid codes 0x03, 0x05, 0x08 and 0x0C map onto indices 0..3; every
+    //! other code is reserved (see isValidAccelRange).
     static constexpr U32 ACCEL_RANGE_COUNT = 4;
     static constexpr F32 ACCEL_FULL_SCALE_G[ACCEL_RANGE_COUNT] = {2.0F, 4.0F, 8.0F, 16.0F};
 
@@ -188,8 +189,14 @@ class BMX160 final : public BMX160ComponentBase {
     //! rad/s per count for a gyroscope range.
     static F32 gyroScale(GyroRange range);
 
-    //! m/s^2 per count for an ACC_RANGE code. The code must satisfy
-    //! (rangeCode >> 2) < ACCEL_RANGE_COUNT.
+    //! True if `rangeCode` is one of the four ACC_RANGE (0x41) codes the
+    //! data sheet defines: 0x03, 0x05, 0x08, 0x0C (2, 4, 8, 16 g). Every other
+    //! value is reserved, so a read-back of one means the part does not hold a
+    //! range this component can scale.
+    static bool isValidAccelRange(U8 rangeCode);
+
+    //! m/s^2 per count for an ACC_RANGE code. The code must be valid
+    //! (isValidAccelRange).
     static F32 accelScale(U8 rangeCode);
 
     //! Split ERR_REG (0x02): bit 6 drop_cmd_err, bit 0 fatal_err.

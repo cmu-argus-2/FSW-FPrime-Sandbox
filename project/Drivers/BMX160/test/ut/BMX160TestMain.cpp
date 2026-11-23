@@ -85,6 +85,14 @@ TEST(BMX160Decode, ScalesGyroscopeRanges) {
     expectClose(project::BMX160::gyroScale(project::GyroRange::DPS_125), 125.0F / 32768.0F * PI / 180.0F);
 }
 
+TEST(BMX160Decode, RecognizesOnlyDefinedAccelerometerRanges) {
+    COMMENT("Only the four codes the data sheet defines are accepted; the rest are reserved.");
+    for (U32 code = 0; code <= 0xFF; code++) {
+        const bool defined = (code == 0x03) || (code == 0x05) || (code == 0x08) || (code == 0x0C);
+        EXPECT_EQ(project::BMX160::isValidAccelRange(static_cast<U8>(code)), defined) << "code 0x" << std::hex << code;
+    }
+}
+
 TEST(BMX160Decode, ScalesAccelerometerRanges) {
     COMMENT("m/s^2 per count is (full scale in g / 32768) * 9.80665.");
     expectClose(project::BMX160::accelScale(0x03), 2.0F / 32768.0F * STANDARD_GRAVITY);

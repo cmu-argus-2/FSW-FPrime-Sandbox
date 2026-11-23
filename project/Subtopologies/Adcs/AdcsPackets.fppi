@@ -4,7 +4,7 @@
   # All three sensors are sampled together, so one packet carries them:
   # three ImuVector channels and the boot-time power modes, 37 bytes of data.
   # PmuStatus is written once, at boot, and rides along in every packet.
-  packet Imu id 300 group 1 {
+  packet Imu id 302 group 1 {
     Adcs.imu.Gyro
     Adcs.imu.Accel
     Adcs.imu.Mag

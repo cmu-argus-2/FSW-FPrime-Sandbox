@@ -254,16 +254,17 @@ void BMX160Tester::testBootCommandDropped() {
 }
 
 void BMX160Tester::testBootInvalidRangeReadback() {
-    // Accelerometer: code 0x10 maps past the end of the range table.
+    // Accelerometer: 0x07 is reserved, even though 0x07 >> 2 would index the
+    // 4 g entry of the range table.
     this->m_holdOne = true;
     this->m_heldRegister = REG_ACC_RANGE;
-    this->m_registers[REG_ACC_RANGE] = 0x10;
+    this->m_registers[REG_ACC_RANGE] = 0x07;
 
     ASSERT_EQ(this->invoke_to_boot(0), Fw::Success::FAILURE);
     ASSERT_EQ(this->m_transactionCount, ACCEL_START + 3);
     this->assertRead(ACCEL_START + 2, REG_ACC_RANGE);
     ASSERT_EVENTS_InvalidRangeReadback_SIZE(1);
-    ASSERT_EVENTS_InvalidRangeReadback(0, REG_ACC_RANGE, 0x10);
+    ASSERT_EVENTS_InvalidRangeReadback(0, REG_ACC_RANGE, 0x07);
 
     // Gyroscope: code 0x07 is not one of the five ranges.
     this->resetRecording();

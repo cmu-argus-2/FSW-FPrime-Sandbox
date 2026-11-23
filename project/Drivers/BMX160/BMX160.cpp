@@ -153,9 +153,13 @@ F32 BMX160::gyroScale(GyroRange range) {
     return (GYRO_FULL_SCALE_DPS[range.e] / COUNTS_PER_FULL_SCALE) * DEG_TO_RAD;
 }
 
+bool BMX160::isValidAccelRange(U8 rangeCode) {
+    return rangeCode == 0x03U || rangeCode == 0x05U || rangeCode == 0x08U || rangeCode == 0x0CU;
+}
+
 F32 BMX160::accelScale(U8 rangeCode) {
+    FW_ASSERT(isValidAccelRange(rangeCode), static_cast<FwAssertArgType>(rangeCode));
     const U32 index = static_cast<U32>(rangeCode >> 2);
-    FW_ASSERT(index < ACCEL_RANGE_COUNT, static_cast<FwAssertArgType>(rangeCode));
     return (ACCEL_FULL_SCALE_G[index] / COUNTS_PER_FULL_SCALE) * STANDARD_GRAVITY;
 }
 
@@ -477,7 +481,7 @@ Fw::Success BMX160::initAccel() {
     if (this->readRegister(ACC_RANGE_ADDR, rangeCode) != Drv::I2cStatus::I2C_OK) {
         return Fw::Success::FAILURE;
     }
-    if (static_cast<U32>(rangeCode >> 2) >= ACCEL_RANGE_COUNT) {
+    if (!isValidAccelRange(rangeCode)) {
         this->log_WARNING_HI_InvalidRangeReadback(static_cast<U8>(ACC_RANGE_ADDR), rangeCode);
         return Fw::Success::FAILURE;
     }
