@@ -13,13 +13,38 @@ module Base {
   }
 
   # ----------------------------------------------------------------------
+  # Downlink sizing
+  # ----------------------------------------------------------------------
+
+  module ComQueueDepths {
+    constant events = 20
+    constant tlm = 30
+    @ Nothing is queued here (there is no file downlink), but ComQueue
+    @ asserts that every configured entry has a depth greater than zero.
+    constant file = 1
+  }
+
+  module BuffMgr {
+    @ Big enough for one F Prime frame (a 512-byte com buffer plus header
+    @ and CRC) and for one uplink read from the UART driver.
+    constant commsBuffSize = 2048
+    constant commsBuffCount = 5
+    constant commsBuffMgrId = 200
+  }
+
+  # ----------------------------------------------------------------------
   # Symbolic constants for port numbers
   # ----------------------------------------------------------------------
 
   enum Ports_RateGroups {
     rateGroup_1Hz
     rateGroup_0_5Hz
-    rateGroup_0_25Hz
+  }
+
+  @ Downlink queue inputs, in priority order
+  enum Ports_ComPacketQueue {
+    EVENTS
+    TELEMETRY
   }
 
   # ----------------------------------------------------------------------
@@ -41,7 +66,7 @@ module Base {
     """
   }
 
-  # 0.5Hz rate group (divisor 2 of 1Hz base clock)
+  # 0.5Hz rate group (divisor 2 of 1Hz base clock). Only in SlowRateGroup.
   instance rateGroup_0_5Hz: Svc.ActiveRateGroup base id BASE_ID + 0x02000 \
     queue size Default.QUEUE_SIZE \
     stack size Default.STACK_SIZE \
@@ -55,34 +80,50 @@ module Base {
     """
   }
 
-  # 0.25Hz rate group (divisor 4 of 1Hz base clock)
-  instance rateGroup_0_25Hz: Svc.ActiveRateGroup base id BASE_ID + 0x03000 \
+  @ Event logger: queues every component's events for downlink
+  instance events: Svc.EventManager base id BASE_ID + 0x05000 \
     queue size Default.QUEUE_SIZE \
     stack size Default.STACK_SIZE \
-    priority 41 \
+    priority 23
+
+  @ Telemetry packetizer. Each deployment's <Name>TopologyDefs.hpp points
+  @ TlmPackets at its own packet set (<Name>Packets.fppi).
+  instance tlmSend: Svc.TlmPacketizer base id BASE_ID + 0x06000 \
+    queue size Default.QUEUE_SIZE \
+    stack size Default.STACK_SIZE \
+    priority 22 \
   {
-    phase Fpp.ToCpp.Phases.configObjects """
-    Svc::ActiveRateGroup::ContextArray context(0);
-    """
     phase Fpp.ToCpp.Phases.configComponents """
-    Base::rateGroup_0_25Hz.configure(ConfigObjects::Base_rateGroup_0_25Hz::context);
+    Base::tlmSend.setPacketList(
+        TlmPackets::packetList,
+        TlmPackets::omittedChannels,
+        1
+    );
     """
   }
 
-  instance cmdSeq: Svc.CmdSequencer base id BASE_ID + 0x04000 \
-    queue size Default.QUEUE_SIZE \
+  @ Downlink queue: events ahead of telemetry, one frame at a time
+  instance comQueue: Svc.ComQueue base id BASE_ID + 0x07000 \
+    queue size 50 \
     stack size Default.STACK_SIZE \
-    priority 40 \
+    priority 29 \
   {
     phase Fpp.ToCpp.Phases.configObjects """
     Fw::MallocAllocator allocator;
     """
     phase Fpp.ToCpp.Phases.configComponents """
-    // Command sequencer needs to allocate memory to hold contents of command sequences
-    Base::cmdSeq.allocateBuffer(0, ConfigObjects::Base_cmdSeq::allocator, 5 * 1024);
+    Svc::ComQueue::QueueConfigurationTable table;
+    table.entries[Base::Ports_ComPacketQueue::EVENTS].depth = Base::ComQueueDepths::events;
+    table.entries[Base::Ports_ComPacketQueue::EVENTS].priority = 0;
+    table.entries[Base::Ports_ComPacketQueue::TELEMETRY].depth = Base::ComQueueDepths::tlm;
+    table.entries[Base::Ports_ComPacketQueue::TELEMETRY].priority = 1;
+    // The one buffer (file) queue, which nothing feeds
+    table.entries[Base::Ports_ComPacketQueue::NUM_CONSTANTS].depth = Base::ComQueueDepths::file;
+    table.entries[Base::Ports_ComPacketQueue::NUM_CONSTANTS].priority = 2;
+    Base::comQueue.configure(table, 0, ConfigObjects::Base_comQueue::allocator);
     """
     phase Fpp.ToCpp.Phases.tearDownComponents """
-    Base::cmdSeq.deallocateBuffer(ConfigObjects::Base_cmdSeq::allocator);
+    Base::comQueue.cleanup();
     """
   }
 
@@ -96,15 +137,14 @@ module Base {
   {
     phase Fpp.ToCpp.Phases.configObjects """
     // Rate group timing: base clock interval (timer) and divisors are coupled
-    // to rate group names. Divisors: 1Hz, 0.5Hz, 0.25Hz
-    Svc::RateGroupDriver::DividerSet divisors{{{1, 0}, {2, 0}, {4, 0}}};
+    // to rate group names. Divisors: 1Hz, 0.5Hz. An output with nothing
+    // connected (0.5Hz, outside SlowRateGroup) is skipped.
+    Svc::RateGroupDriver::DividerSet divisors{{{1, 0}, {2, 0}}};
     """
     phase Fpp.ToCpp.Phases.configComponents """
     Base::rateGroupDriver.configure(ConfigObjects::Base_rateGroupDriver::divisors);
     """
   }
-
-  instance systemResources: Svc.SystemResources base id BASE_ID + 0x12000
 
   instance timer: Zephyr.ZephyrRateDriver base id BASE_ID + 0x13000 \
   {
@@ -114,6 +154,7 @@ module Base {
     """
   }
 
+  @ USB CDC ACM console, carrying the ground link
   instance comDriver: Zephyr.ZephyrUartDriver base id BASE_ID + 0x14000 \
   {
     phase Fpp.ToCpp.Phases.configComponents """
@@ -121,87 +162,110 @@ module Base {
     """
   }
 
+  @ Frame buffers: the framer's downlink frames and, with Ground, the UART
+  @ driver's uplink reads
+  instance commsBufferManager: Svc.BufferManager base id BASE_ID + 0x15000 \
+  {
+    phase Fpp.ToCpp.Phases.configObjects """
+    Fw::MallocAllocator allocator;
+    Svc::BufferManager::BufferBins bins;
+    """
+    phase Fpp.ToCpp.Phases.configComponents """
+    memset(&ConfigObjects::Base_commsBufferManager::bins, 0, sizeof(ConfigObjects::Base_commsBufferManager::bins));
+    ConfigObjects::Base_commsBufferManager::bins.bins[0].bufferSize = Base::BuffMgr::commsBuffSize;
+    ConfigObjects::Base_commsBufferManager::bins.bins[0].numBuffers = Base::BuffMgr::commsBuffCount;
+    Base::commsBufferManager.setup(
+        Base::BuffMgr::commsBuffMgrId,
+        0,
+        ConfigObjects::Base_commsBufferManager::allocator,
+        ConfigObjects::Base_commsBufferManager::bins
+    );
+    """
+    phase Fpp.ToCpp.Phases.tearDownComponents """
+    Base::commsBufferManager.cleanup();
+    """
+  }
+
+  @ F Prime protocol framer (the GDS's --framing-selection fprime)
+  instance framer: Svc.FprimeFramer base id BASE_ID + 0x16000
+
+  @ Adapts the framed stream to the UART driver
+  instance comStub: Svc.ComStub base id BASE_ID + 0x17000
+
   # ----------------------------------------------------------------------
-  # Subtopology
+  # Subtopologies
   # ----------------------------------------------------------------------
 
-  @ Command and telemetry plumbing, rate groups and the UART ground link.
-  @ Every deployment imports this. Rate group member ports used here are
-  @ listed in the RateGroups connections; deployments take the next free
-  @ ones for their subsystems.
+  @ The least every deployment needs: a 1 Hz rate group, time, and a one-way
+  @ downlink of events and telemetry. There is no uplink here; import
+  @ Ground.Subtopology as well to command the deployment from the GDS.
+  @
+  @ Not included, and to be added back only when something needs it:
+  @ health pings (see Ground.fpp), command sequencer, parameter database
+  @ (no component has parameters), version reporting, SystemResources (its
+  @ CPU and memory figures are stubs on Zephyr), the text event logger
+  @ (it prints on the same USB port as the link), the fatal event handler
+  @ (no component emits FATAL events), and file uplink and downlink.
+  @
+  @ 1 Hz rate group members 0-5 belong to Base and Ground; subsystems start
+  @ at member 6.
   topology Subtopology {
 
-    import CdhCore.Subtopology
-    import ComCcsds.Subtopology
-
-    # Parameter database only. The rest of the FileHandling subtopology
-    # (fileUplink, fileDownlink, fileManager) is unused. Its file name is
-    # supplied by each deployment's configureTopology().
-    instance FileHandling.prmDb
     instance chronoTime
-    instance rateGroup_1Hz
-    instance rateGroup_0_5Hz
-    instance rateGroup_0_25Hz
-    instance rateGroupDriver
-    instance systemResources
     instance timer
+    instance rateGroupDriver
+    instance rateGroup_1Hz
+    instance events
+    instance tlmSend
+    instance comQueue
+    instance commsBufferManager
+    instance framer
+    instance comStub
     instance comDriver
-    instance cmdSeq
 
-    connections ComCcsds_CdhCore {
-      # Core events and telemetry to communication queue
-      CdhCore.events.PktSend -> ComCcsds.comQueue.comPacketQueueIn[ComCcsds.Ports_ComPacketQueue.EVENTS]
+    connections Downlink {
+      events.PktSend -> comQueue.comPacketQueueIn[Ports_ComPacketQueue.EVENTS]
       # PktSend[0] is the REALTIME section. PktSend[1] (RECORDED) stays
       # unconnected until there is storage to record to, and the packetizer
       # skips sections whose port is unconnected.
-      CdhCore.tlmSend.PktSend[0] -> ComCcsds.comQueue.comPacketQueueIn[ComCcsds.Ports_ComPacketQueue.TELEMETRY]
+      tlmSend.PktSend[0] -> comQueue.comPacketQueueIn[Ports_ComPacketQueue.TELEMETRY]
 
-      # Router to Command Dispatcher
-      ComCcsds.fprimeRouter.commandOut -> CdhCore.cmdDisp.seqCmdBuff
-      CdhCore.cmdDisp.seqCmdStatus -> ComCcsds.fprimeRouter.cmdResponseIn
-    }
+      comQueue.dataOut -> framer.dataIn
+      framer.dataReturnOut -> comQueue.dataReturnIn
+      framer.comStatusOut -> comQueue.comStatusIn
+      framer.bufferAllocate -> commsBufferManager.bufferGetCallee
+      framer.bufferDeallocate -> commsBufferManager.bufferSendIn
 
-    connections Communications {
-      # ComDriver buffer allocations
-      comDriver.allocate      -> ComCcsds.commsBufferManager.bufferGetCallee
-      comDriver.deallocate    -> ComCcsds.commsBufferManager.bufferSendIn
+      framer.dataOut -> comStub.dataIn
+      comStub.dataReturnOut -> framer.dataReturnIn
+      comStub.comStatusOut -> framer.comStatusIn
 
-      # ComDriver <-> ComStub (Uplink)
-      comDriver.$recv                     -> ComCcsds.comStub.drvReceiveIn
-      ComCcsds.comStub.drvReceiveReturnOut -> comDriver.recvReturnIn
-
-      # ComStub <-> ComDriver (Downlink)
-      ComCcsds.comStub.drvSendOut      -> comDriver.$send
-      comDriver.ready         -> ComCcsds.comStub.drvConnected
+      comStub.drvSendOut -> comDriver.$send
+      comDriver.ready -> comStub.drvConnected
     }
 
     connections RateGroups {
-      # timer to drive rate group
       timer.CycleOut -> rateGroupDriver.CycleIn
-
-      # 1Hz rate group: members 0-5 used here
       rateGroupDriver.CycleOut[Ports_RateGroups.rateGroup_1Hz] -> rateGroup_1Hz.CycleIn
-      rateGroup_1Hz.RateGroupMemberOut[0] -> CdhCore.tlmSend.Run
-      rateGroup_1Hz.RateGroupMemberOut[1] -> systemResources.run
-      rateGroup_1Hz.RateGroupMemberOut[2] -> ComCcsds.comQueue.run
-      rateGroup_1Hz.RateGroupMemberOut[3] -> ComCcsds.aggregator.timeout
-      rateGroup_1Hz.RateGroupMemberOut[4] -> CdhCore.cmdDisp.run
-      rateGroup_1Hz.RateGroupMemberOut[5] -> comDriver.schedIn
 
-      # 0.5Hz rate group: member 0 used here
-      rateGroupDriver.CycleOut[Ports_RateGroups.rateGroup_0_5Hz] -> rateGroup_0_5Hz.CycleIn
-      rateGroup_0_5Hz.RateGroupMemberOut[0] -> cmdSeq.schedIn
-
-      # 0.25Hz rate group: members 0-1 used here
-      rateGroupDriver.CycleOut[Ports_RateGroups.rateGroup_0_25Hz] -> rateGroup_0_25Hz.CycleIn
-      rateGroup_0_25Hz.RateGroupMemberOut[0] -> CdhCore.$health.Run
-      rateGroup_0_25Hz.RateGroupMemberOut[1] -> ComCcsds.commsBufferManager.schedIn
+      # 1Hz members 0-3 used here, 4-5 by Ground
+      rateGroup_1Hz.RateGroupMemberOut[0] -> tlmSend.Run
+      rateGroup_1Hz.RateGroupMemberOut[1] -> comQueue.run
+      rateGroup_1Hz.RateGroupMemberOut[2] -> events.run
+      rateGroup_1Hz.RateGroupMemberOut[3] -> commsBufferManager.schedIn
     }
 
-    connections CdhCore_cmdSeq {
-      # Command Sequencer
-      cmdSeq.comCmdOut -> CdhCore.cmdDisp.seqCmdBuff
-      CdhCore.cmdDisp.seqCmdStatus -> cmdSeq.cmdResponseIn
+  }
+
+  @ The 0.5 Hz rate group, for deployments that sample something at 0.5 Hz.
+  @ Import it alongside Subtopology. None of its members are used here.
+  topology SlowRateGroup {
+
+    instance rateGroupDriver
+    instance rateGroup_0_5Hz
+
+    connections RateGroups {
+      rateGroupDriver.CycleOut[Ports_RateGroups.rateGroup_0_5Hz] -> rateGroup_0_5Hz.CycleIn
     }
 
   }

@@ -10,6 +10,9 @@ module AdcsBench {
   # Subtopology imports
   # ----------------------------------------------------------------------
     import Base.Subtopology
+    import Ground.Subtopology
+    # 0.5 Hz rate group: driver bring-up samples the light sensors here
+    import Base.SlowRateGroup
     import Board.Subtopology
     import Adcs.Subtopology
 
@@ -17,17 +20,13 @@ module AdcsBench {
   # Pattern graph specifiers
   # ----------------------------------------------------------------------
 
-    command connections instance CdhCore.cmdDisp
-    event connections instance CdhCore.events
-    telemetry connections instance CdhCore.tlmSend
-    text event connections instance CdhCore.textLogger
-    health connections instance CdhCore.$health
-    param connections instance FileHandling.prmDb
+    command connections instance Ground.cmdDisp
+    event connections instance Base.events
+    telemetry connections instance Base.tlmSend
     time connections instance Base.chronoTime
 
   # ----------------------------------------------------------------------
-  # Telemetry packets for CdhCore.tlmSend, a TlmPacketizer
-  # (see project/config/CdhCoreTlmConfig.fpp)
+  # Telemetry packets for Base.tlmSend, a TlmPacketizer
   # ----------------------------------------------------------------------
 
     include "AdcsBenchPackets.fppi"
