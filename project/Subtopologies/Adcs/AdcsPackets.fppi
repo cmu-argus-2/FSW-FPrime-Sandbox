@@ -37,3 +37,17 @@
     Adcs.imu.Mag
     Adcs.imu.PmuStatus
   }
+
+  # ADCS task: one packet per run, 69 bytes of data.
+  packet AdcsTask id 303 group 1 {
+    Adcs.adcsManager.SatState
+    Adcs.adcsManager.Controller
+    Adcs.adcsManager.Mode
+    Adcs.adcsManager.Gyro
+    Adcs.adcsManager.GyroStatus
+    Adcs.adcsManager.Mag
+    Adcs.adcsManager.MagStatus
+    Adcs.adcsManager.Dipole
+    Adcs.adcsManager.Throttles
+    Adcs.adcsManager.CycleTimeUs
+  }

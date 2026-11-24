@@ -67,19 +67,18 @@ module AdcsBench {
     }
 
     connections Bench {
-      # Until the ADCS task exists, each driver under test is driven straight
-      # from a rate group here, from the first free member port (Base uses
-      # 1Hz 0-3 and Ground 1Hz 4-5; every 0.5Hz member is free). The ADCS
-      # task PR replaces these lines with the task.
+      # Rate group members, from the first free one (Base uses 1Hz 0-3 and
+      # Ground 1Hz 4-5; every 0.5Hz member is free).
       #
-      # IMU: the first tick boots it, which takes about 120 ms; every tick
-      # after reads all three sensors.
-      Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Adcs.imu.run
+      # ADCS task, 1 Hz. It boots the IMU and reads it itself.
+      Base.rateGroup_1Hz.RateGroupMemberOut[6] -> Adcs.adcsManager.run
 
-      # Light sensors, at 0.5 Hz because the nine need nine member ports:
-      # the first tick boots each sensor, every tick after reads it. A read
-      # normally takes three short transactions, but blocks for up to 1.1 s
-      # if a part never reports a finished conversion.
+      # The task does not use the light sensors yet, so until it does they are
+      # still driven straight from a rate group, for bring-up. They run at
+      # 0.5 Hz because the nine need nine member ports: the first tick boots each
+      # sensor, every tick after reads it. A read normally takes three short
+      # transactions, but blocks for up to 1.1 s if a part never reports a
+      # finished conversion.
       Base.rateGroup_0_5Hz.RateGroupMemberOut[0] -> Adcs.lightSensorXp.run
       Base.rateGroup_0_5Hz.RateGroupMemberOut[1] -> Adcs.lightSensorXm.run
       Base.rateGroup_0_5Hz.RateGroupMemberOut[2] -> Adcs.lightSensorYp.run

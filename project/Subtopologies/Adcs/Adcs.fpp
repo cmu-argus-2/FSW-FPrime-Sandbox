@@ -3,6 +3,21 @@ module Adcs {
   constant BASE_ID = 0x10300000
 
   # ----------------------------------------------------------------------
+  # Active component instances
+  # ----------------------------------------------------------------------
+
+  # ADCS task. Its control cycles block for most of each second, so it has
+  # its own thread, and the drivers it calls run on that thread too.
+  # Priority 32 puts it above the EPS task (31), as attitude control is the
+  # more time-critical of the two. Note that fprime-zephyr currently clamps
+  # every priority above 14 down to 14, so until that is fixed all F Prime
+  # threads run at the same priority.
+  instance adcsManager: project.AdcsManager base id BASE_ID + 0x0B000 \
+    queue size Base.Default.QUEUE_SIZE \
+    stack size Base.Default.STACK_SIZE \
+    priority 32
+
+  # ----------------------------------------------------------------------
   # Passive component instances
   # ----------------------------------------------------------------------
 
@@ -99,10 +114,12 @@ module Adcs {
   # Subtopology
   # ----------------------------------------------------------------------
 
-  @ Attitude determination and control: its sensors and actuators and, once
-  @ it exists, the ADCS task that calls them. Connections to shared buses
-  @ (Board) and to the rate groups (Base) are made by the deployment.
+  @ Attitude determination and control: its sensors and actuators and the
+  @ ADCS task that calls them. Connections to shared buses (Board) and to
+  @ the rate groups (Base) are made by the deployment.
   topology Subtopology {
+
+    instance adcsManager
 
     instance lightSensorXp
     instance lightSensorXm
@@ -114,6 +131,14 @@ module Adcs {
     instance lightSensorZpYp
     instance lightSensorZm
     instance imu
+
+    connections Imu {
+      adcsManager.imuBoot -> imu.boot
+      adcsManager.imuReadGyro -> imu.readGyro
+      adcsManager.imuReadMag -> imu.readMag
+      adcsManager.imuGetGyroRange -> imu.getGyroRange
+      adcsManager.imuSetGyroRange -> imu.setGyroRange
+    }
 
   }
 
